@@ -95,7 +95,8 @@ function clockHome() {
         const early = nowT < today[0].min;
         const st = (sl === cur || (early && sl.type === 'dodo')) ? 'now' : (!early && sl.min < nowT ? 'past' : '');
         const star = doneTodayFor(sl) ? '<span class="ds-star" aria-label="fait">★</span>' : '';
-        return `<li class="ds ${st} ${star ? 'done' : ''}" style="background:${sl.info.bg};${sl.info.dark ? 'color:#FBF6EE' : ''}">${star}${icon(ICONS[sl.info.icon] || ICONS.clock, 28)}<span class="sr-only">${esc(sl.info.label)} ${sl.time}</span></li>`;
+        const jump = sl.type !== 'reveil' && st !== 'now' ? `data-jump="${esc(sl.id)}"` : '';
+        return `<li class="ds ${st} ${star ? 'done' : ''}" ${jump} style="background:${sl.info.bg};${sl.info.dark ? 'color:#FBF6EE' : ''}">${star}${icon(ICONS[sl.info.icon] || ICONS.clock, 28)}<span class="sr-only">${esc(sl.info.label)} ${sl.time}</span></li>`;
       }).join('')}
     </ol>
   </div>`;

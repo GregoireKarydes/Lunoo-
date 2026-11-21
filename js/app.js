@@ -2,7 +2,8 @@
 import { ctx, go, render, keepAwake, nightPhase, enterNight } from './ctx.js';
 import { kv, loadSettings } from './store.js';
 import { audioContext, chime } from './sound.js';
-import { currentSlot, isSleepTime, sleepStartedAt } from './clock.js';
+import { currentSlot, isSleepTime, sleepStartedAt, setOverride } from './clock.js';
+import { save } from './ctx.js';
 import './onboarding.js';
 import './child.js';
 import './preview.js';
@@ -58,6 +59,28 @@ document.addEventListener('pointerdown', (e) => {
 });
 ['pointerup', 'pointercancel', 'pointerleave'].forEach((t) => document.addEventListener(t, (e) => { if (holdEl && (t !== 'pointerleave' || e.target === holdEl)) cancelHold(); }));
 document.addEventListener('contextmenu', (e) => { if (e.target.closest('[data-hold]')) e.preventDefault(); });
+
+// ---------- Appui long sur un moment de la frise : on y passe directement ----------
+// Même principe que la lune, mais deux fois plus court (1 s minimum). Un simple toucher ne fait rien.
+let jumpTimer = null, jumpEl = null;
+const jumpSec = () => Math.max(1, Math.round((ctx.s.access.hold || 3) / 2 * 2) / 2);
+function cancelJump() { clearTimeout(jumpTimer); jumpTimer = null; if (jumpEl) jumpEl.classList.remove('holding'); jumpEl = null; }
+document.addEventListener('pointerdown', (e) => {
+  const el = e.target.closest('[data-jump]');
+  if (!el || ctx.route !== 'home') return;
+  e.preventDefault();
+  cancelJump();
+  jumpEl = el;
+  el.style.setProperty('--hold', jumpSec() + 's');
+  el.classList.add('holding');
+  jumpTimer = setTimeout(() => {
+    const id = el.dataset.jump; cancelJump();
+    if (navigator.vibrate) navigator.vibrate(30);
+    setOverride(ctx.s, id); save(); render();
+  }, jumpSec() * 1000);
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach((t) => document.addEventListener(t, (e) => { if (jumpEl && (t !== 'pointerleave' || e.target === jumpEl)) cancelJump(); }));
+document.addEventListener('contextmenu', (e) => { if (e.target.closest('[data-jump]')) e.preventDefault(); });
 
 // Clavier : Entrée / Espace maintenus sur le coin (accessibilité).
 document.addEventListener('keydown', (e) => {

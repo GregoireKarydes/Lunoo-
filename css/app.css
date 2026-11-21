@@ -752,3 +752,10 @@ select.input { padding: 0 12px; }
 .wz-go { width: 100%; justify-content: center; }
 @media (max-width: 700px) { .wz-grid.g3, .wz-grid.g4, .wz-stories { grid-template-columns: 1fr 1fr; } .wz-q { font-size: 24px; } }
 .wz-foot { position: sticky; bottom: -26px; background: var(--cream); padding: 12px 0 4px; margin-bottom: -4px; }
+
+/* Appui long sur un moment de la frise */
+.ds[data-jump] { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.ds[data-jump]::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(245, 196, 81, .6); border-radius: inherit; pointer-events: none; }
+.ds[data-jump].holding::after { animation: jumpfill var(--hold, 1.5s) linear forwards; }
+.ds[data-jump].holding { transform: scale(1.08); }
+@keyframes jumpfill { to { height: 100%; } }
