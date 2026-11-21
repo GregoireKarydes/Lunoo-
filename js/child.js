@@ -1,6 +1,6 @@
 // Écrans de l'enfant : accueil, choix des histoires, lecture, moments, nuit, réveil.
 import { ctx, esc, go, render, startRitual, nextStep, momentInfo, nightPhase, endNight, toMin, keepAwake } from './ctx.js';
-import { ANIMALS, PALETTES, ICONS, MOMENTS, momentAnimal, storyLength } from './data.js';
+import { ANIMALS, PALETTES, ICONS, MOMENTS, momentAnimal, storyLength, DONE_SAY } from './data.js';
 import { animalSVG, icon, moonSVG, sceneFor } from './animal.js';
 import { parentCorner } from './ui.js';
 import { allStories, playStory } from './narrator.js';
@@ -65,7 +65,10 @@ let handTimer = null;
 function clockHome() {
   const s = ctx.s, c = s.child;
   const { cur, next, today, progress } = currentSlot(s);
-  const info = cur.info;
+  // Moment déjà fait : on ne répète pas « c'est l'heure de la douche », on attend le suivant en temps libre.
+  const waiting = s.rewards && s.rewards.on && REWARDABLE.includes(cur.type) && doneToday(cur.id);
+  const info = waiting ? { ...cur.info, bg: pal().bg, say: DONE_SAY[cur.type] || 'C’est fait !', icon: 'check', asleep: false, dark: false } : cur.info;
+  const kind = waiting ? 'libre' : cur.type;
   const dark = !!info.dark;
   const sc = s.schedule;
   const napTime = cur.type === 'sieste';
@@ -74,13 +77,13 @@ function clockHome() {
     ${parentCorner(info.bg, dark ? '#F5C451' : '#E2B24C')}
     <div class="ch-top"><h1 class="hello">Coucou ${esc(c.name)} !</h1></div>
     <div class="ch-main">
-      <div class="ch-animal" data-act="say" data-v="${esc(`${info.say} Ensuite : ${next.info.label.toLowerCase()}.`)}" role="button" aria-label="Écouter : ${esc(info.say)}">
-        ${sceneBlock(cur.type, !!info.asleep, 320)}
+      <div class="ch-animal" data-act="say" data-v="${esc(`${info.say} ${waiting ? 'En attendant, temps libre. ' : ''}Ensuite : ${next.info.label.toLowerCase()}.`)}" role="button" aria-label="Écouter : ${esc(info.say)}">
+        ${sceneBlock(kind, !!info.asleep, 320)}
         ${activityBadge(info)}
       </div>
       <div class="ch-side">
-        <div class="ch-sayrow"><div class="ch-clock">${clockFace(next, 132, dark)}<span class="ch-digital" id="ch-digital">${hhmm()}</span></div><span class="ch-say">${esc(info.say)}</span></div>
-        ${rewardBtn(cur)}
+        <div class="ch-sayrow"><div class="ch-clock">${clockFace(next, 132, dark)}<span class="ch-digital" id="ch-digital">${hhmm()}</span></div><span class="ch-say">${esc(info.say)}${waiting ? '<small>En attendant : temps libre</small>' : ''}</span></div>
+        ${waiting ? '' : rewardBtn(cur)}
         <div class="ch-next">
           <span class="ch-next-ico" style="background:${next.info.bg}">${animalSVG(momentAnimal(next.type), { size: 56, asleep: !!next.info.asleep })}</span>
           <div class="grow"><span class="ch-next-label">Ensuite : ${esc(next.info.label)}</span>

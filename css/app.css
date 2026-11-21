@@ -629,3 +629,9 @@ select.input { padding: 0 12px; }
 .ch-next-ico .animal { width: 56px; height: 56px; }
 .ds { min-width: 58px; padding: 10px; }
 .ds.past { opacity: .3; }
+.modal.qs { gap: 12px; }
+.qs-btn { min-height: 72px; border-radius: 22px; border: 0; background: var(--navy); color: var(--cream); display: flex; align-items: center; gap: 14px; padding: 0 22px; font-family: var(--display); font-size: 22px; text-align: left; }
+.qs-btn svg { color: var(--moon); flex: none; }
+.qs-btn.ghost { background: #fff; color: var(--ink); border: 2px solid var(--line); font-size: 19px; }
+.qs-btn.ghost svg { color: var(--muted); }
+.ch-say small { display: block; font-family: var(--body); font-weight: 800; font-size: 22px; opacity: .7; margin-top: 8px; }

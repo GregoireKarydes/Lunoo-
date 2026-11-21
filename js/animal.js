@@ -141,6 +141,7 @@ const SCENES = {
   dents: { cls: 'wiggle', fx: 'etoiles', n: 6 },
   sortie: { cls: 'sway', fx: 'feuilles', n: 6 },
   reveil: { cls: 'wiggle', fx: 'rayons', n: 1 },
+  libre: { cls: 'bob', fx: 'etoiles', n: 3 },
   jeu: { cls: 'hop', fx: 'notes', n: 4 },
   histoire: { cls: 'breathe', fx: 'notes', n: 3 },
   calme: { cls: 'breathe', fx: 'etoiles', n: 3 },

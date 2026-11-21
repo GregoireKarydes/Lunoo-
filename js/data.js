@@ -28,9 +28,15 @@ export const ANIMALS = {
 export const MOMENT_ANIMALS = {
   reveil: 'coq', manger: 'ours', douche: 'grenouille', bain: 'canard', dents: 'castor',
   habiller: 'pingouin', jeu: 'chien', ecole: 'renard', sortie: 'lapin', calme: 'chat',
-  histoire: 'mouton', sieste: 'chat', dodo: 'hibou', nuit: 'hibou', soon: 'hibou',
+  histoire: 'mouton', sieste: 'chat', dodo: 'hibou', nuit: 'hibou', soon: 'hibou', libre: 'renard',
 };
-export const momentAnimal = (kind) => MOMENT_ANIMALS[kind] || 'hibou';
+export const momentAnimal = (kind) => MOMENT_ANIMALS[kind] || 'renard';
+
+// Quand le moment est fait, en attendant le suivant : animal par défaut et « temps libre ».
+export const DONE_SAY = {
+  habiller: 'Les habits sont mis !', manger: 'Le repas, c’est fini !', douche: 'La douche, c’est fait !', bain: 'Le bain, c’est fait !',
+  dents: 'Les dents sont toutes propres !', ecole: 'Le cartable est prêt !', sortie: 'Les chaussures sont mises !', calme: 'Pause calme réussie !',
+};
 
 export const MOMENTS = {
   jeu: { label: 'Jeu', bg: '#FCEBC0', dark: false, light: 1, text: 'On joue encore un peu !', icon: 'jeu' },

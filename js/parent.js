@@ -47,8 +47,43 @@ ctx.actions['pin-key'] = async (b) => {
 };
 ctx.actions['pin-cancel'] = () => { pin = ''; go(pinMode === 'enter' ? 'home' : 'p-access'); };
 
-export function openParent() {
+function enterParentSpace() {
   if (ctx.s.access.pin) go('pin', { mode: 'enter' }); else go('p-home');
+}
+
+// Appui long sur la lune depuis l'écran de l'enfant : un petit panneau « pour les grands »
+// avec l'action du moment (passer à la suite), sans entrer dans l'espace parent.
+export function openParent() {
+  const child = !ctx.route.startsWith('p-') && ctx.route !== 'pin';
+  if (!child) return enterParentSpace();
+  document.querySelectorAll('.quick-sheet').forEach((x) => x.remove());
+  const acts = [];
+  if (ctx.ritual) acts.push(['qs-ritual', ICONS.next, 'Étape suivante du rituel']);
+  else if (!ctx.night && ctx.s.clock.on) {
+    const { next } = currentSlot(ctx.s);
+    acts.push(['qs-next', ICONS.next, `Passer à « ${esc(next.info.label)} »`, next.id]);
+  }
+  if (!ctx.night && !ctx.ritual) acts.push(['qs-night', ICONS.nuit, sleepTypeNow(ctx.s) === 'sieste' ? 'Lancer la sieste' : 'Lancer la nuit']);
+  const el = document.createElement('div');
+  el.className = 'modal-wrap quick-sheet';
+  el.innerHTML = `<div class="modal qs">
+    <p class="modal-q">Pour les grands</p>
+    ${acts.map(([act, ic, label, v]) => `<button type="button" class="qs-btn" data-qs="${act}" data-v="${v || ''}">${icon(ic, 26)}<span>${label}</span></button>`).join('')}
+    <button type="button" class="qs-btn ghost" data-qs="qs-parent">${icon(ICONS.lock, 24)}<span>Espace parent${ctx.s.access.pin ? ' (code)' : ''}</span></button>
+    <button type="button" class="link-btn" data-qs="qs-close">Fermer</button>
+  </div>`;
+  document.body.appendChild(el);
+  const t = setTimeout(() => el.remove(), 15000);
+  el.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-qs]');
+    if (!b && e.target !== el) return;
+    clearTimeout(t); el.remove();
+    const a = b ? b.dataset.qs : 'qs-close';
+    if (a === 'qs-next') { setOverride(ctx.s, b.dataset.v); save(); go('home'); }
+    else if (a === 'qs-ritual') nextStep();
+    else if (a === 'qs-night') { if (ctx.s.access.pin) enterParentSpace(); else go('p-launch', { type: sleepTypeNow(ctx.s) }); }
+    else if (a === 'qs-parent') enterParentSpace();
+  });
 }
 ctx.actions['exit-parent'] = () => {
   if (ctx.night) go('night');
