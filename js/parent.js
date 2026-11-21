@@ -18,6 +18,7 @@ const childName = () => esc(ctx.s.child.name || 'l’enfant');
 let pin = '';
 let pinMode = 'enter'; // enter | set | confirm
 let pinFirst = '';
+let pinThen = null; // après le code : ouvrir « Lancer la nuit » (soir | sieste)
 ctx.screens.pin = {
   render(p) {
     pinMode = p.mode || 'enter';
@@ -39,7 +40,7 @@ ctx.actions['pin-key'] = async (b) => {
   if (v === '⌫') pin = pin.slice(0, -1); else if (pin.length < 4) pin += v;
   if (pin.length < 4) return render();
   if (pinMode === 'enter') {
-    if (pin === ctx.s.access.pin) { pin = ''; go('p-home'); }
+    if (pin === ctx.s.access.pin) { pin = ''; if (pinThen) { const t = pinThen; pinThen = null; go('home'); openLaunch(t); } else go('p-home'); }
     else { pin = ''; render(); document.getElementById('pin-box').classList.add('shake'); }
   } else if (pinMode === 'set') { pinFirst = pin; pin = ''; go('pin', { mode: 'confirm' }); }
   else {
@@ -47,7 +48,7 @@ ctx.actions['pin-key'] = async (b) => {
     else { pin = ''; toast('Les deux codes ne sont pas identiques'); go('pin', { mode: 'set' }); }
   }
 };
-ctx.actions['pin-cancel'] = () => { pin = ''; go(pinMode === 'enter' ? 'home' : 'p-access'); };
+ctx.actions['pin-cancel'] = () => { pin = ''; pinThen = null; go(pinMode === 'enter' ? 'home' : 'p-access'); };
 
 function enterParentSpace() {
   if (ctx.s.access.pin) go('pin', { mode: 'enter' }); else go('p-home');
@@ -91,7 +92,7 @@ export function openParent() {
     else if (a === 'qs-sleep') sleepNow();
     else if (a === 'qs-skip') skipStory();
     else if (a === 'qs-amb') { const on = toggleStoryAmbience(); const ab = document.querySelector('.amb-btn'); if (ab) { ab.classList.toggle('on', on); ab.setAttribute('aria-pressed', String(on)); } }
-    else if (a === 'qs-night') { if (ctx.s.access.pin) enterParentSpace(); else openLaunch(sleepTypeNow(ctx.s)); }
+    else if (a === 'qs-night') askLaunch(sleepTypeNow(ctx.s));
     else if (a === 'qs-parent') enterParentSpace();
   });
 }
@@ -168,6 +169,11 @@ ctx.actions['stop-night'] = () => confirmBox('Arrêter la nuit ? L’écran revi
 
 // ---------- Lancer la nuit : assistant pas à pas (js/launch.js) ----------
 ctx.actions['open-launch'] = (b) => openLaunch(b.dataset.v);
+// Depuis l'écran de l'enfant : code parent d'abord s'il y en a un.
+export function askLaunch(type) {
+  if (ctx.s.access.pin) { pinThen = type; go('pin', { mode: 'enter' }); } else openLaunch(type);
+}
+ctx.actions['ask-launch'] = (b) => askLaunch(b.dataset.v);
 
 // ---------- Enfant ----------
 ctx.screens['p-child'] = {
@@ -515,8 +521,8 @@ ctx.screens['p-clock'] = {
         <div class="side-preview"><span class="label">En ce moment</span>
           <div class="preview sm" style="background:${cur.info.bg};${cur.info.dark ? 'color:#FBF6EE' : ''}">${animalSVG(momentAnimal(cur.type), { size: 140, asleep: !!cur.info.asleep })}<span class="preview-say">${esc(cur.info.say)}</span></div>
           ${hasDodo
-            ? `<span class="muted small">Pendant « Dodo », l'écran passe tout seul en mode nuit jusqu'au réveil (${sc.wakeWeek} en semaine, ${sc.wakeWeekend} le week-end). Si ${childName()} se lève avant, il voit que c'est encore l'heure de dormir.</span>`
-            : '<div class="warn-box small">Ajoutez un moment « Dodo » pour que l’écran passe tout seul en mode nuit.</div>'}
+            ? `<span class="muted small">Pendant « Dodo », l'écran montre que c'est l'heure de dormir et un bouton à maintenir lance la nuit (jamais toute seule). Réveil : (${sc.wakeWeek} en semaine, ${sc.wakeWeekend} le week-end). Si ${childName()} se lève avant, il voit que c'est encore l'heure de dormir.</span>`
+            : '<div class="warn-box small">Ajoutez un moment « Dodo » : l’écran montrera que c’est l’heure de dormir, avec le bouton pour lancer la nuit.</div>'}
         </div>
       </div>` : ''}
       ${ck.on ? wakeNapBlock() : ''}

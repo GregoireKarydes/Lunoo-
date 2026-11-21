@@ -2,7 +2,7 @@
 import { ctx, go, render, keepAwake, nightPhase, enterNight } from './ctx.js';
 import { kv, loadSettings } from './store.js';
 import { audioContext, chime } from './sound.js';
-import { currentSlot, isSleepTime, sleepStartedAt, setOverride } from './clock.js';
+import { currentSlot, setOverride } from './clock.js';
 import { save } from './ctx.js';
 import './onboarding.js';
 import './child.js';
@@ -103,25 +103,12 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // ---------- Horloge intelligente ----------
-// Pendant la période de sommeil, l'écran de l'enfant passe tout seul en mode nuit :
-// s'il se lève à 5 h, il voit que c'est encore l'heure de dormir.
-const IDLE_ROUTES = ['home', 'pick', 'player'];
-async function clockTick() {
-  if (!ctx.s || !ctx.s.onboarded || !ctx.s.clock.on) return false;
-  if (ctx.night || ctx.ritual) return false;
-  if (!IDLE_ROUTES.includes(ctx.route)) return false;
-  if (ctx.route !== 'home' && ctx.free) return false; // histoire libre en cours : on laisse finir
-  if (ctx.nightOffUntil && Date.now() < ctx.nightOffUntil) return false;
-  if (!isSleepTime(ctx.s)) return false;
-  await enterNight('soir', { quiet: true, startedAt: sleepStartedAt(ctx.s) });
-  return true;
-}
-
+// La nuit ne se lance jamais toute seule : à l'heure du dodo, l'écran de l'enfant montre que c'est l'heure
+// de dormir et un bouton à maintenir (code parent si besoin) lance la nuit.
 // L'accueil se met à jour chaque minute (créneau en cours, bouton « Au dodo » qui clignote).
 let lastSlot = null;
 setInterval(() => { if (document.visibilityState === 'visible') keepAwake(); }, 60000); // si le système a relâché le verrou
 setInterval(async () => {
-  if (await clockTick()) return;
   if (ctx.route === 'home') {
     const cs = ctx.s.clock.on ? currentSlot(ctx.s) : null;
     const id = cs ? cs.cur.id : null;
@@ -167,7 +154,6 @@ async function boot() {
   }
   ctx.nightOffUntil = (await kv.get('nightOffUntil')) || null;
   ctx.route = 'home';
-  if (await clockTick()) return;
   lastSlot = ctx.s.clock.on ? currentSlot(ctx.s).cur.id : null;
   go('home');
 }

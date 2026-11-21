@@ -671,6 +671,8 @@ select.input { padding: 0 12px; }
 .hold-btn { position: relative; overflow: hidden; min-height: 56px; border-radius: 999px; border: 2px solid #4A3F66; background: #2E2850; color: #F3E6D8; display: inline-flex; align-items: center; gap: 10px; padding: 0 20px; font-weight: 800; font-size: 16px; touch-action: none; -webkit-user-select: none; user-select: none; }
 .hold-btn svg { color: #D9A93F; position: relative; }
 .hold-btn span { position: relative; }
+.hold-btn > * { pointer-events: none; }
+.hold-btn { -webkit-touch-callout: none; }
 .hold-btn .hold-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(217,169,63,.35); }
 .hold-btn.holding .hold-bar { animation: holdfill 1.5s linear forwards; }
 @media (orientation: portrait) { .player-skip { justify-content: center; } }
@@ -691,7 +693,7 @@ select.input { padding: 0 12px; }
 
 /* ---------- Premier lancement : le geste de la lune ---------- */
 .onb-moon { position: relative; }
-.parent-corner.practice { opacity: 1; animation: pulse-moon 1.6s ease-in-out infinite; background: rgba(245, 196, 81, .18); }
+.parent-corner.practice { opacity: 1; animation: pulse-moon 1.6s ease-in-out infinite; }
 .parent-corner.practice.holding { animation: none; }
 @keyframes pulse-moon { 50% { transform: scale(1.12); } }
 .practice-hint { font-family: var(--display); font-weight: 600; font-size: 24px; color: #6A62C4; }
@@ -759,3 +761,28 @@ select.input { padding: 0 12px; }
 .ds[data-jump].holding::after { animation: jumpfill var(--hold, 1.5s) linear forwards; }
 .ds[data-jump].holding { transform: scale(1.08); }
 @keyframes jumpfill { to { height: 100%; } }
+
+/* Onboarding : sa journée */
+.day-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: min(900px, 100%); }
+.day-tile { position: relative; min-height: 104px; border-radius: 22px; border: 3px dashed #CFC8EA; background: #fff; color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px; font-size: 17px; }
+.day-tile svg { opacity: .55; }
+.day-tile.sel { border: 3px solid var(--navy); }
+.day-tile.sel svg, .day-tile.fixed svg { opacity: 1; }
+.day-tile.fixed { border: 3px solid transparent; }
+.day-tile.fixed span { font-size: 13px; opacity: .7; }
+.day-check { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; background: var(--cream); display: flex; align-items: center; justify-content: center; font-weight: 800; color: #6A62C4; }
+.day-tile.sel .day-check { background: var(--navy); color: #fff; }
+.onb-body.top { justify-content: flex-start; padding-top: 10px; }
+.onb-times { width: min(620px, 100%); text-align: left; }
+.onb-times .ck-row { grid-template-columns: auto 1fr auto; }
+@media (max-width: 700px) { .day-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* À l'heure du dodo : bouton à maintenir pour lancer la nuit */
+.night-hold { position: relative; overflow: hidden; display: flex; align-items: center; gap: 16px; min-height: 84px; border-radius: 999px; border: 3px solid #4B4F92; background: #2E3270; color: #FBF6EE; padding: 0 30px 0 24px; text-align: left; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.night-hold > * { position: relative; pointer-events: none; }
+.night-hold svg { color: var(--moon); flex: none; }
+.night-hold span { display: flex; flex-direction: column; }
+.night-hold strong { font-family: var(--display); font-weight: 600; font-size: 24px; }
+.night-hold small { font-size: 14px; color: #C9C3F2; }
+.night-hold .nh-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(245, 196, 81, .4); }
+.night-hold.holding .nh-bar { animation: holdfill var(--hold, 3s) linear forwards; }

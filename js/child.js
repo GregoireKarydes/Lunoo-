@@ -52,6 +52,29 @@ export function clockFace(next, size = 150, dark = false) {
 
 
 const doneTodayFor = (sl) => { const r = ctx.s.rewards; return !!(r && r.done[dayKey()] && r.done[dayKey()][sl.id]); };
+// À l'heure du dodo (ou de la sieste) : un bouton à maintenir lance la nuit. Rien n'est automatique.
+function nightHoldBtn(cur) {
+  const type = cur.type === 'sieste' ? 'sieste' : 'soir';
+  return `<button type="button" class="night-hold" data-nighthold="${type}" aria-label="Gardez le doigt appuyé pour lancer ${type === 'sieste' ? 'la sieste' : 'la nuit'}">
+    <i class="nh-bar"></i>${icon(ICONS.nuit, 30)}<span><strong>${type === 'sieste' ? 'Lancer la sieste' : 'Lancer la nuit'}</strong><small>Pour les grands : gardez le doigt appuyé</small></span></button>`;
+}
+let nhT = null, nhB = null;
+function nhStop() { clearTimeout(nhT); nhT = null; if (nhB) nhB.classList.remove('holding'); nhB = null; }
+document.addEventListener('pointerdown', (e) => {
+  const b = e.target.closest && e.target.closest('[data-nighthold]');
+  if (!b) return;
+  e.preventDefault(); nhStop(); nhB = b;
+  try { b.setPointerCapture(e.pointerId); } catch (err) { /* ignoré */ }
+  const sec = ctx.s.access.hold || 3;
+  b.style.setProperty('--hold', sec + 's');
+  b.classList.add('holding');
+  nhT = setTimeout(() => { const t = b.dataset.nighthold; nhStop(); if (navigator.vibrate) navigator.vibrate(30); ctx.actions['ask-launch']({ dataset: { v: t } }); }, sec * 1000);
+});
+document.addEventListener('pointerup', () => { if (nhB) nhStop(); }, true);
+document.addEventListener('pointercancel', () => { if (nhB) nhStop(); }, true);
+document.addEventListener('pointerleave', (e) => { if (nhB && e.target === nhB) nhStop(); }, true);
+document.addEventListener('contextmenu', (e) => { if (e.target.closest && e.target.closest('[data-nighthold]')) e.preventDefault(); });
+
 function rewardBtn(cur) {
   if (!ctx.s.rewards || !ctx.s.rewards.on || !REWARDABLE.includes(cur.type)) return '';
   if (doneToday(cur.id)) return `<div class="done-chip">★ C'est fait, bravo !</div>`;
@@ -82,6 +105,7 @@ function clockHome() {
       <div class="ch-side">
         <div class="ch-sayrow"><div class="ch-clock"><span class="ch-digital" id="ch-digital">${hhmm()}</span></div><span class="ch-say">${esc(info.say)}${waiting ? '<small>En attendant : temps libre</small>' : ''}</span></div>
         ${waiting ? '' : rewardBtn(cur)}
+        ${!waiting && info.asleep ? nightHoldBtn(cur) : ''}
         <div class="ch-next">
           <span class="ch-next-ico" style="background:${next.info.bg}">${animalSVG(momentAnimal(next.type), { size: 56, asleep: !!next.info.asleep })}</span>
           <div class="grow"><span class="ch-next-label">Ensuite : ${esc(next.info.label)}</span>
@@ -292,16 +316,23 @@ export function sleepNow() {
   enterNight(cur.type === 'sieste' && ctx.s.schedule.nap.on ? 'sieste' : 'soir');
 }
 // Boutons « à garder appuyé » (1,5 s) : visibles pour les parents, difficiles à déclencher par hasard.
-let holdT = null;
+let holdT = null, holdB = null;
+function stopHold() { clearTimeout(holdT); holdT = null; if (holdB) holdB.classList.remove('holding'); holdB = null; }
 document.addEventListener('pointerdown', (e) => {
   const b = e.target.closest && e.target.closest('[data-holdact]');
   if (!b) return;
   e.preventDefault();
+  stopHold();
+  holdB = b;
+  try { b.setPointerCapture(e.pointerId); } catch (err) { /* ignoré */ }
   b.classList.add('holding');
-  clearTimeout(holdT);
-  holdT = setTimeout(() => { b.classList.remove('holding'); if (b.dataset.holdact === 'skip') skipStory(); else sleepNow(); }, 1500);
+  holdT = setTimeout(() => { const act = b.dataset.holdact; stopHold(); if (act === 'skip') skipStory(); else sleepNow(); }, 1500);
 });
-['pointerup', 'pointercancel', 'pointerleave'].forEach((t) => document.addEventListener(t, () => { clearTimeout(holdT); document.querySelectorAll('.hold-btn.holding').forEach((x) => x.classList.remove('holding')); }, true));
+// On n'annule que si le doigt se lève ou quitte vraiment le bouton (pas en passant sur l'icône ou le texte à l'intérieur).
+document.addEventListener('pointerup', () => { if (holdB) stopHold(); }, true);
+document.addEventListener('pointercancel', () => { if (holdB) stopHold(); }, true);
+document.addEventListener('pointerleave', (e) => { if (holdB && e.target === holdB) stopHold(); }, true);
+document.addEventListener('contextmenu', (e) => { if (e.target.closest && e.target.closest('[data-holdact]')) e.preventDefault(); });
 ctx.actions['player-amb'] = (b) => { const on = toggleStoryAmbience(); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); };
 ctx.actions['player-toggle'] = (b) => {
   if (!player) return;

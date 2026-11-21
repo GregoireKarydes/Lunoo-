@@ -1,17 +1,18 @@
-// Premier lancement, sans inscription : prénom, couleur, horaires. Les animaux suivent les moments de la journée.
+// Premier lancement, sans inscription : prénom, sa journée, les heures, le geste de la lune.
 import { ctx, esc, go, save, render, toMin, fromMin } from './ctx.js';
-import { ANIMALS, PALETTES, ICONS } from './data.js';
+import { ANIMALS, PALETTES, ICONS, CLOCK_TYPES } from './data.js';
+import { daySlots } from './clock.js';
 import { animalSVG, moonSVG, icon } from './animal.js';
 import { requestPersistence } from './store.js';
 
 const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true;
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-const STEPS = 3;
+const STEPS = 4;
 function head(step, back) {
   return `<div class="onb-head">
     <button type="button" class="link-btn" data-go="${back}">${icon(ICONS.back)}Retour</button>
-    <div class="progress" aria-label="Étape ${step} sur ${STEPS}">${[1, 2, 3].map((i) => `<span class="${i <= step ? 'done' : ''}"></span>`).join('')}</div>
+    <div class="progress" aria-label="Étape ${step} sur ${STEPS}">${[1, 2, 3, 4].map((i) => `<span class="${i <= step ? 'done' : ''}"></span>`).join('')}</div>
     <span class="muted step-n">${step} / ${STEPS}</span>
   </div>`;
 }
@@ -77,30 +78,87 @@ ctx.screens['onb-name'] = {
 ctx.actions['onb-name-next'] = () => {
   const v = document.getElementById('child-name').value.trim();
   if (!v) { document.getElementById('child-name').focus(); return; }
-  ctx.s.child.name = v; save(); go('onb-color');
+  ctx.s.child.name = v; save(); go('onb-day');
 };
 
-ctx.screens['onb-color'] = {
+// Étape 2 : les moments de sa journée. Réveil et dodo sont toujours là ; on ajoute ce qu'on veut.
+const DAY_IDEAS = [
+  ['habiller', 'habiller', 'S’habiller', '7:15'],
+  ['petitdej', 'manger', 'Petit-déjeuner', '7:30'],
+  ['ecole', 'ecole', 'École', '8:15'],
+  ['dejeuner', 'manger', 'Déjeuner', '12:00'],
+  ['sieste', 'sieste', 'Sieste', '13:00'],
+  ['gouter', 'manger', 'Goûter', '16:30'],
+  ['dehors', 'sortie', 'Dehors', '17:00'],
+  ['bain', 'bain', 'Bain', '18:15'],
+  ['diner', 'manger', 'Dîner', '18:45'],
+  ['dents', 'dents', 'Dents', '19:20'],
+];
+const hasIdea = (key) => (key === 'sieste' ? ctx.s.schedule.nap.on : ctx.s.clock.slots.some((x) => x.id === key));
+
+ctx.screens['onb-day'] = {
   render() {
-    const c = ctx.s.child, pal = PALETTES[c.color];
+    const t = (type) => CLOCK_TYPES[type];
+    const fixed = (type, label) => `<div class="day-tile fixed" style="background:${t(type).bg};${t(type).dark ? 'color:#FBF6EE' : ''}">${icon(ICONS[t(type).icon], 32)}<strong>${label}</strong><span>toujours là</span></div>`;
     return `<div class="screen onb">
       ${head(2, 'onb-name')}
-      <div class="onb-body row">
-        <div class="preview" style="background:${pal.bg}">${animalSVG('hibou', { size: 280 })}<span class="preview-hi">Coucou ${esc(c.name)} !</span></div>
-        <div class="col">
-          <h1>Sa couleur préférée ?</h1>
-          <p class="muted lead">Touchez une couleur : son écran change tout de suite. Vous pourrez la changer quand vous voulez.</p>
-          <div class="grid3">${Object.entries(PALETTES).map(([id, p]) => `
-            <button type="button" class="color-card ${c.color === id ? 'sel' : ''}" aria-pressed="${c.color === id}" data-act="onb-color" data-v="${id}">
-              <span class="dot" style="background:${p.body}"></span><span>${p.label}</span>
-            </button>`).join('')}</div>
+      <div class="onb-body">
+        <h1>Que fait ${esc(ctx.s.child.name)} dans sa journée ?</h1>
+        <p class="lead muted">Touchez les moments à afficher sur son écran. Un animal et une couleur pour chacun.</p>
+        <div class="day-grid">
+          ${fixed('reveil', 'Réveil')}
+          ${DAY_IDEAS.map(([key, type, label]) => { const on = hasIdea(key); return `<button type="button" class="day-tile ${on ? 'sel' : ''}" aria-pressed="${on}" data-act="onb-idea" data-v="${key}" style="${on ? `background:${t(type).bg};${t(type).dark ? 'color:#FBF6EE' : ''}` : ''}">
+            ${icon(ICONS[t(type).icon], 32)}<strong>${label}</strong><span class="day-check">${on ? icon(ICONS.check, 18) : '+'}</span></button>`; }).join('')}
+          ${fixed('dodo', 'Dodo')}
         </div>
+      </div>
+      <div class="onb-foot"><span class="muted">Vous pourrez en ajouter ou en retirer plus tard.</span><button type="button" class="btn primary" data-act="onb-day-next">Continuer</button></div>
+    </div>`;
+  },
+};
+ctx.actions['onb-idea'] = (b) => {
+  const key = b.dataset.v, idea = DAY_IDEAS.find((x) => x[0] === key);
+  if (key === 'sieste') ctx.s.schedule.nap.on = !ctx.s.schedule.nap.on;
+  else if (hasIdea(key)) ctx.s.clock.slots = ctx.s.clock.slots.filter((x) => x.id !== key);
+  else ctx.s.clock.slots.push({ id: key, type: idea[1], time: idea[3] });
+  save(); render();
+};
+ctx.actions['onb-day-next'] = () => {
+  const sl = ctx.s.clock.slots;
+  const chosen = DAY_IDEAS.some(([key]) => key !== 'sieste' && sl.some((x) => x.id === key));
+  // Le moment « Jeu » par défaut ne sert que si rien n'est choisi (sinon l'écran dirait « réveil » toute la journée).
+  if (chosen) ctx.s.clock.slots = sl.filter((x) => x.id !== 'c1');
+  else if (!sl.some((x) => x.id === 'c1')) sl.push({ id: 'c1', type: 'jeu', time: '8:00' });
+  save(); go('onb-times');
+};
+
+// Étape 3 : les heures, déjà proposées ; on ajuste seulement si besoin.
+ctx.screens['onb-times'] = {
+  render() {
+    const s = ctx.s, sc = s.schedule;
+    const ref = new Date(); while (ref.getDay() === 0 || ref.getDay() === 6) ref.setDate(ref.getDate() + 1);
+    const pm = (act, extra, label) => `<div class="pair"><button type="button" class="round sm" data-act="${act}" ${extra} data-d="-15" aria-label="${label} plus tôt">−</button>`;
+    const rows = daySlots(s, ref).filter((x) => x.fixed !== 'napend').map((sl) => {
+      const info = sl.info;
+      const label = (DAY_IDEAS.find((x) => x[0] === sl.id) || [])[2] || (sl.fixed === 'wake' ? 'Réveil' : sl.fixed === 'nap' ? 'Sieste' : info.label);
+      let ctl;
+      if (sl.fixed === 'wake') ctl = `${pm('time', 'data-k="wakeWeek"', label)}<span class="ck-time">${sc.wakeWeek}</span><button type="button" class="round sm" data-act="time" data-k="wakeWeek" data-d="15" aria-label="${label} plus tard">+</button></div>`;
+      else if (sl.fixed === 'nap') ctl = `${pm('time', 'data-k="nap.start"', label)}<span class="ck-time">${sc.nap.start}</span><button type="button" class="round sm" data-act="time" data-k="nap.start" data-d="15" aria-label="${label} plus tard">+</button></div>`;
+      else ctl = `${pm('ck-time', `data-id="${esc(sl.id)}"`, label)}<span class="ck-time">${sl.time}</span><button type="button" class="round sm" data-act="ck-time" data-id="${esc(sl.id)}" data-d="15" aria-label="${label} plus tard">+</button></div>`;
+      return `<div class="ck-row"><span class="ck-ico" style="background:${info.bg};${info.dark ? 'color:#F5C451' : ''}">${icon(ICONS[info.icon] || ICONS.clock, 26)}</span>
+        <div class="ck-label"><strong>${label}</strong>${sl.fixed === 'nap' ? `<span class="muted small">Durée ${Math.floor(sc.nap.dur / 60) ? Math.floor(sc.nap.dur / 60) + ' h ' : ''}${sc.nap.dur % 60 ? String(sc.nap.dur % 60).padStart(2, '0') : ''} <button type="button" class="link-btn small" data-act="nap-dur" data-d="-15">−</button><button type="button" class="link-btn small" data-act="nap-dur" data-d="15">+</button></span>` : ''}</div>${ctl}</div>`;
+    }).join('');
+    return `<div class="screen onb">
+      ${head(3, 'onb-day')}
+      <div class="onb-body top">
+        <h1>Les heures, à peu près</h1>
+        <p class="lead muted">Elles sont déjà proposées. Ajustez avec − et + si besoin, sinon continuez.</p>
+        <div class="ck-list onb-times">${rows}</div>
       </div>
       <div class="onb-foot end"><button type="button" class="btn primary" data-go="onb-moon">Continuer</button></div>
     </div>`;
   },
 };
-ctx.actions['onb-color'] = (b) => { ctx.s.child.color = b.dataset.v; save(); render(); };
 
 ctx.actions.time = (b) => {
   const sc = ctx.s.schedule, k = b.dataset.k, d = Number(b.dataset.d);
@@ -122,9 +180,9 @@ ctx.screens['onb-moon'] = {
     const a = ctx.s.access, done = !!p.done;
     const corner = { hd: 'en haut à droite', hg: 'en haut à gauche', bd: 'en bas à droite', bg: 'en bas à gauche' }[a.corner];
     return `<div class="screen onb onb-moon">
-      ${head(3, 'onb-color')}
+      ${head(4, 'onb-times')}
       ${done ? '' : `<button type="button" class="parent-corner corner-${a.corner} practice" id="practice-moon" aria-label="Gardez le doigt appuyé ${a.hold} secondes">
-        <svg class="hold-ring" viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="34"/></svg>${moonSVG(34)}</button>`}
+        <svg class="hold-ring" viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="34"/></svg>${moonSVG(40, '#FBF6EE')}</button>`}
       <div class="onb-body">
         ${done ? `<div class="big-tick">${icon(ICONS.check, 64)}</div>
           <h1>Bravo, c’est exactement ça !</h1>
@@ -155,22 +213,18 @@ ctx.screens['onb-moon'] = {
   unmount() { clearTimeout(practiceTimer); practiceTimer = null; },
 };
 
-ctx.actions['onb-finish'] = async () => { ctx.s.onboarded = true; await save(); requestPersistence(); go('onb-ready'); };
+ctx.actions['onb-finish'] = async () => { ctx.s.onboarded = true; ctx.s.guide = { ...(ctx.s.guide || {}), clock: true }; await save(); requestPersistence(); go('onb-ready'); };
 
 ctx.screens['onb-ready'] = {
   render() {
     const c = ctx.s.child, sc = ctx.s.schedule, pal = PALETTES[c.color];
-    const dodo = (ctx.s.clock.slots.find((x) => x.type === 'dodo') || {}).time || '19:45';
     return `<div class="screen onb ready" style="background:${pal.bg}">
       <div class="ready-animal">${animalSVG('hibou', { size: 300 })}</div>
       <div class="col">
         <h1>Tout est prêt pour ${esc(c.name)} !</h1>
-        <p class="lead">Pour commencer, sa journée est toute simple :</p>
-        <div class="chips static">
-          <span class="chip">${icon(ICONS.sun, 18)} Réveil ${sc.wakeWeek}</span>
-          <span class="chip">${icon(ICONS.nuit, 18)} Dodo ${dodo}</span>
-        </div>
-        <p class="muted">Ces heures se changent en deux secondes dans l’espace parent. Un petit guide vous y attend pour la suite : vos heures, une histoire avec votre voix, la première nuit.</p>
+        <p class="lead">Sa journée :</p>
+        <div class="chips static">${daySlots(ctx.s).filter((x) => x.fixed !== 'napend').map((x) => `<span class="chip">${icon(ICONS[x.info.icon] || ICONS.clock, 18)} ${x.time} ${esc((DAY_IDEAS.find((d) => d[0] === x.id) || [])[2] || x.info.label)}</span>`).join('')}</div>
+        <p class="muted">Tout se change dans l’espace parent. Un petit guide vous y attend pour la suite : une histoire avec votre voix, puis la première nuit.</p>
         <details class="card tips"><summary>Avant la première nuit (conseillé)</summary>
           <span>Branchez la tablette, baissez la luminosité au minimum, et activez « Accès guidé » (iPad) ou « Épinglage d'écran » (Android) pour que ${esc(c.name)} reste dans Lunoo.</span></details>
         <button type="button" class="btn primary xl" data-go="home">Voir l'écran de ${esc(c.name)}</button>
