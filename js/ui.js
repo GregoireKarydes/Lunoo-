@@ -34,7 +34,7 @@ export function stepper(act, value, label) {
 // Espace parent simple : l'accueil (les actions du quotidien) et 4 rubriques de réglages.
 // Chaque rubrique regroupe quelques pages, affichées en onglets sous le titre.
 const GROUPS = [
-  { id: 'home', label: 'Accueil', icon: ICONS.home, pages: [['p-home', 'Accueil'], ['p-launch', 'Lancer']] },
+  { id: 'home', label: 'Accueil', icon: ICONS.home, pages: [['p-home', 'Accueil']] },
   { id: 'day', label: 'La journée', icon: ICONS.clock, pages: [['p-clock', 'La journée']] },
   { id: 'stories', label: 'Histoires', icon: ICONS.histoire, pages: [['p-stories', 'Histoires']] },
   { id: 'night', label: 'La nuit', icon: ICONS.nuit, pages: [['p-night', 'Veilleuse'], ['p-sounds', 'Son pour dormir']] },
@@ -44,7 +44,7 @@ const GROUPS = [
 export function parentLayout(active, title, body) {
   const name = esc(ctx.s.child.name || 'l’enfant');
   const g = GROUPS.find((x) => x.pages.some(([r]) => r === active)) || GROUPS[0];
-  const tabs = g.pages.filter(([r]) => r !== 'p-launch');
+  const tabs = g.pages;
   return `<div class="parent">
     <nav class="pnav" aria-label="Espace parent">
       <div class="pnav-brand">${moonSVG(28)}<span>Espace parent</span></div>

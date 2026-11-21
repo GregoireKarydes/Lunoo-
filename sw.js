@@ -1,6 +1,6 @@
 // Service worker : garde Lunoo disponible hors ligne.
 // Changez VERSION à chaque mise en ligne pour que les tablettes récupèrent la nouvelle version.
-const VERSION = 'lunoo-v1.9.1';
+const VERSION = 'lunoo-v1.10.0';
 const FILES = [
   './',
   'index.html',
@@ -15,6 +15,7 @@ const FILES = [
   'js/narrator.js',
   'js/ui.js',
   'js/onboarding.js',
+  'js/launch.js',
   'js/child.js',
   'js/parent.js',
   'js/studio.js',
