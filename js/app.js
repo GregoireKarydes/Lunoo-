@@ -119,7 +119,15 @@ setInterval(async () => {
 // ---------- Démarrage ----------
 async function boot() {
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register('sw.js').then((reg) => reg.update()).catch(() => {});
+    // Nouvelle version installée : on recharge une fois pour l'afficher (sauf pendant la nuit ou une histoire).
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController) return;
+      const reload = () => location.reload();
+      if (ctx.night || ctx.ritual || ['player', 'brush'].includes(ctx.route)) document.addEventListener('visibilitychange', reload, { once: true });
+      else reload();
+    });
   }
   ctx.s = await loadSettings();
   keepAwake(); // l'écran reste allumé jour et nuit

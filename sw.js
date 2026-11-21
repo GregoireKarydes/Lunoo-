@@ -1,6 +1,6 @@
 // Service worker : garde Lunoo disponible hors ligne.
 // Changez VERSION à chaque mise en ligne pour que les tablettes récupèrent la nouvelle version.
-const VERSION = 'lunoo-v1.8.0';
+const VERSION = 'lunoo-v1.8.1';
 const FILES = [
   './',
   'index.html',
@@ -34,7 +34,11 @@ const FILES = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
+  // cache: 'reload' : on prend les fichiers sur le serveur, pas dans le cache du navigateur (sinon une
+  // tablette pouvait garder l'ancienne version de certains fichiers après une mise à jour).
+  e.waitUntil(caches.open(VERSION)
+    .then((c) => c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' }))))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
