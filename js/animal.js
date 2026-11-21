@@ -88,6 +88,40 @@ document.addEventListener('pointerdown', (e) => {
   });
 });
 
+// Décor et mouvement adaptés à chaque moment : bulles au bain, gouttes sous la douche, il mange, il brosse les dents…
+const SCENES = {
+  bain: { cls: 'bob', fx: 'bulles', n: 7 },
+  douche: { cls: 'bob', fx: 'gouttes', n: 10 },
+  manger: { cls: 'chew', fx: 'manger', n: 1 },
+  dents: { cls: 'wiggle', fx: 'etoiles', n: 6 },
+  dehors: { cls: 'sway', fx: 'feuilles', n: 6 },
+  jeu: { cls: 'hop', fx: 'notes', n: 4 },
+  histoire: { cls: 'breathe', fx: 'notes', n: 3 },
+  calme: { cls: 'breathe', fx: 'etoiles', n: 3 },
+  habiller: { cls: 'wiggle', fx: '', n: 0 },
+  ecole: { cls: 'bob', fx: '', n: 0 },
+  sieste: { cls: '', fx: '', n: 0 },
+  dodo: { cls: '', fx: '', n: 0 },
+};
+
+const range = (n, f) => Array.from({ length: n }, (_, i) => f(i)).join('');
+const FX_HTML = {
+  bulles: (n) => range(n, (i) => `<span class="bulle" style="left:${8 + (i * 13) % 80}%;--s:${10 + (i * 7) % 18}px;animation-duration:${3 + (i % 3)}s;animation-delay:-${i * 0.6}s"></span>`),
+  gouttes: (n) => range(n, (i) => `<span class="goutte" style="left:${6 + (i * 9) % 88}%;animation-duration:${1.6 + (i % 4) * 0.25}s;animation-delay:-${i * 0.35}s"></span>`),
+  manger: () => '<span class="miette">🍎</span>',
+  etoiles: (n) => range(n, (i) => `<span class="etoile" style="left:${10 + (i * 17) % 80}%;top:${8 + (i * 23) % 70}%;animation-delay:-${i * 0.7}s">✦</span>`),
+  feuilles: (n) => range(n, (i) => `<span class="feuille" style="left:${(i * 19) % 90}%;animation-duration:${4 + (i % 3)}s;animation-delay:-${i * 0.9}s">🍃</span>`),
+  notes: (n) => range(n, (i) => `<span class="note" style="left:${20 + (i * 21) % 60}%;bottom:${20 + (i * 9) % 20}%;animation-delay:-${i}s">♪</span>`),
+};
+
+/** Renvoie la classe d'animation de l'animal et le décor (HTML) pour un moment donné. */
+export function sceneFor(kind, { asleep = false } = {}) {
+  const sc = SCENES[kind] || {};
+  const build = FX_HTML[sc.fx];
+  const html = !asleep && build && sc.n ? `<span class="scene scene-${sc.fx}" aria-hidden="true">${build(sc.n)}</span>` : '';
+  return { cls: asleep ? '' : (sc.cls || ''), html };
+}
+
 export function icon(d, size = 24, extra = '') {
   // Les attributs de « extra » passent en premier : en HTML, le premier attribut en double l'emporte.
   return `<svg ${extra} width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;

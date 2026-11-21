@@ -1,7 +1,7 @@
 // Écrans de l'enfant : accueil, choix des histoires, lecture, moments, nuit, réveil.
 import { ctx, esc, go, render, startRitual, nextStep, momentInfo, nightPhase, endNight, toMin, keepAwake } from './ctx.js';
 import { ANIMALS, PALETTES, ICONS, MOMENTS } from './data.js';
-import { animalSVG, icon, moonSVG } from './animal.js';
+import { animalSVG, icon, moonSVG, sceneFor } from './animal.js';
 import { parentCorner } from './ui.js';
 import { allStories, playStory } from './narrator.js';
 import { stopAmbience } from './sound.js';
@@ -31,7 +31,7 @@ function clockHome() {
     <div class="ch-top"><h1 class="hello">Coucou ${esc(c.name)} !</h1></div>
     <div class="ch-main">
       <div class="ch-animal">
-        ${animalSVG(c.animal, { palette: c.color, size: 320, cls: info.asleep ? '' : 'bob', asleep: !!info.asleep, label: ANIMALS[c.animal].label })}
+        ${(() => { const sc = sceneFor(cur.type, { asleep: !!info.asleep }); return `${animalSVG(c.animal, { palette: c.color, size: 320, cls: sc.cls || (info.asleep ? '' : 'bob'), asleep: !!info.asleep, label: ANIMALS[c.animal].label })}${sc.html}`; })()}
         ${activityBadge(info)}
       </div>
       <div class="ch-side">
@@ -232,7 +232,7 @@ ctx.screens.moment = {
     return `<div class="screen child moment ${m.dark ? 'dark' : ''}" style="background:${m.bg}">
       ${parentCorner(m.bg)}
       <span class="moment-step">${r ? `Étape ${r.idx + 1} sur ${r.steps.length}` : ''}</span>
-      <div class="moment-animal">${animalSVG(c.animal, { palette: c.color, size: 320, cls: p.id === 'jeu' ? 'hop' : (p.id === 'bain' ? 'bob' : 'breathe') })}</div>
+      <div class="moment-animal">${(() => { const sc = sceneFor(p.id); return `${animalSVG(c.animal, { palette: c.color, size: 320, cls: sc.cls || 'breathe' })}${sc.html}`; })()}</div>
       <h1>${m.text}</h1>
       <div class="moment-time" id="mtime">${p.dur} min</div>
       <button type="button" class="btn ghost-dark" data-act="moment-next">Étape suivante ${icon(ICONS.next, 22)}</button>
