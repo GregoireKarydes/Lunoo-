@@ -50,8 +50,6 @@ export function clockFace(next, size = 150, dark = false) {
     <circle cx="60" cy="60" r="5" class="cf-dot"/>${marker}</svg>`;
 }
 
-// « Au dodo » n'apparaît que le soir (dès 1 h avant le rituel), pour éviter une nuit lancée à midi.
-function eveningNow(t) { const r = toMin(ctx.s.schedule.ritualStart); return t >= r - 60 || t < 4 * 60; }
 
 const doneTodayFor = (sl) => { const r = ctx.s.rewards; return !!(r && r.done[dayKey()] && r.done[dayKey()][sl.id]); };
 function rewardBtn(cur) {
@@ -120,25 +118,16 @@ ctx.screens.home = {
     if (ctx.s.clock && ctx.s.clock.on) return clockHome();
     const c = ctx.s.child, p = pal();
     const sc = ctx.s.schedule;
-    const napTime = sc.nap.on && Math.abs(nowMin() - toMin(sc.nap.start)) <= 90;
-    const ritualSoon = Math.abs(nowMin() - toMin(sc.ritualStart)) <= 30;
-    const steps = ctx.s.rituals[napTime ? 'sieste' : 'soir'].filter((x) => x.on && x.id !== 'nuit');
     return `<div class="screen child home" style="background:${p.bg}">
       ${parentCorner(p.bg)}
       <h1 class="hello">Coucou ${esc(c.name)} !</h1>
       <div class="home-main">
         <div class="home-animal">${animalSVG('hibou', { size: 340, cls: 'bob', label: 'Hibou' })}</div>
       </div>
-      <div class="ritual-strip" aria-label="Le rituel">
-        <span class="strip-label">${napTime ? 'Sieste' : 'Ce soir'}</span>
-        ${steps.map((st, i) => `${i ? `<span class="strip-arrow">${icon(ICONS.next, 18)}</span>` : ''}<span class="strip-step" style="background:${MOMENTS[st.id].bg};${MOMENTS[st.id].dark ? 'color:#FBF6EE' : ''}">${MOMENTS[st.id].label}</span>`).join('')}
-        <span class="strip-arrow">${icon(ICONS.next, 18)}</span><span class="strip-step" style="background:#2E3270;color:#FBF6EE">Dodo</span>
-      </div>
     </div>`;
   },
 };
 ctx.actions.say = (b) => speak(momentTalk(b.dataset.v, ctx.s.child.name, b.dataset.next, !!b.dataset.wait));
-ctx.actions['start-ritual'] = (b) => startRitual(b.dataset.v);
 ctx.actions['free-stories'] = () => { setBedMuted(false); ctx.ritual = null; ctx.free = { chosen: [] }; go('pick', { max: 3, free: true }); };
 
 // ---------- Choix des histoires ----------

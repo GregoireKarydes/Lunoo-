@@ -52,16 +52,14 @@ export function sleepRange(age) {
   return [9 * 60, 12 * 60, '6 à 12 ans', '9 à 12 h'];
 }
 
-// Heure d'endormissement estimée = début du rituel + durées + ~15 min d'histoires.
-export function estimatedBedtime(s, type = 'soir') {
-  const steps = s.rituals[type].filter((x) => x.on);
-  let t = type === 'soir' ? toMin(s.schedule.ritualStart) : toMin(s.schedule.nap.start) - 15;
-  for (const st of steps) t += st.id === 'histoire' ? 15 : (st.id === 'nuit' ? 0 : st.dur);
-  return t;
+// Heure d'endormissement estimée = moment « Dodo » de la journée (+ ~15 min d'histoires).
+export function estimatedBedtime(s) {
+  const d = (s.clock.slots || []).find((x) => x.type === 'dodo');
+  return toMin(d ? d.time : '20:00') + 15;
 }
 
 export function sleepCheck(s) {
-  const bed = estimatedBedtime(s, 'soir');
+  const bed = estimatedBedtime(s);
   const night = (toMin(s.schedule.wakeWeek) - bed + 1440) % 1440;
   const nap = s.schedule.nap.on ? s.schedule.nap.dur : 0;
   const total = night + nap;

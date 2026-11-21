@@ -1,11 +1,10 @@
 // Espace parent : code, tableau de bord et réglages.
-import { ctx, esc, go, render, save, uid, fmtDur, sleepCheck, startRitual, nextStep, launchNight, endNight, toMin, fromMin, awakeState } from './ctx.js';
+import { ctx, esc, go, render, save, uid, fmtDur, sleepCheck, nextStep, launchNight, endNight, toMin, fromMin, awakeState } from './ctx.js';
 import { daySlots, currentSlot, setOverride } from './clock.js';
 import { ANIMALS, PALETTES, ICONS, MOMENTS, SOUNDS, CLOCK_TYPES, momentAnimal, storyMinutes, storyLength } from './data.js';
 import { animalSVG, icon } from './animal.js';
 import { REWARDABLE, dayKey } from './rewards.js';
 import { parentLayout, toggle, chips, stepper, toast, ask, confirmBox } from './ui.js';
-import { hoursBody } from './onboarding.js';
 import { skipStory, toggleStoryAmbience, sleepNow } from './child.js';
 import { bedPlaying } from './sound.js';
 import { allStories, impKey, recKey } from './narrator.js';
@@ -65,7 +64,7 @@ export function openParent() {
     if (!ctx.ritual) acts.push(['qs-sleep', ICONS.nuit, 'Dormir maintenant']);
     acts.push(['qs-amb', ICONS.sound, bedPlaying() ? 'Couper l’ambiance (pluie, vagues…)' : 'Remettre l’ambiance']);
   }
-  if (ctx.ritual) acts.push(['qs-ritual', ctx.route === 'player' ? ICONS.nuit : ICONS.next, ctx.route === 'player' ? 'Arrêter les histoires, passer à la nuit' : 'Étape suivante du rituel']);
+  if (ctx.ritual) acts.push(['qs-ritual', ctx.route === 'player' ? ICONS.nuit : ICONS.next, ctx.route === 'player' ? 'Arrêter les histoires, passer à la nuit' : 'Passer à la nuit']);
   else if (!ctx.night && ctx.s.clock.on) {
     const { next } = currentSlot(ctx.s);
     acts.push(['qs-next', ICONS.next, `Passer à « ${esc(next.info.label)} »`, next.id]);
@@ -138,11 +137,10 @@ ctx.screens['p-home'] = {
           <button type="button" class="home-act warn" data-act="stop-night">${icon(ICONS.sun, 34)}<strong>Arrêter la nuit</strong></button>
         </div>`;
     } else if (ctx.ritual) {
-      const st = ctx.ritual.steps[ctx.ritual.idx];
-      main = `<div class="big-status">${icon(ICONS.list, 40)}<div><strong>Rituel en cours${st ? ' : ' + MOMENTS[st.id].label.toLowerCase() : ''}</strong><span>Étape ${ctx.ritual.idx + 1} sur ${ctx.ritual.steps.length}</span></div></div>
+      main = `<div class="big-status">${icon(ICONS.histoire, 40)}<div><strong>Histoires en cours</strong><span>Ensuite, ${ctx.ritual.type === 'sieste' ? 'la sieste' : 'la nuit'} commence toute seule</span></div></div>
         <div class="home-actions-grid">
-          <button type="button" class="home-act" data-act="rit-next">${icon(ICONS.next, 34)}<strong>Étape suivante</strong></button>
-          <button type="button" class="home-act" data-act="exit-parent">${icon(ICONS.back, 34)}<strong>Revenir au rituel</strong></button>
+          <button type="button" class="home-act" data-act="rit-next">${icon(ICONS.nuit, 34)}<strong>Passer à ${ctx.ritual.type === 'sieste' ? 'la sieste' : 'la nuit'}</strong></button>
+          <button type="button" class="home-act" data-act="exit-parent">${icon(ICONS.back, 34)}<strong>Revenir aux histoires</strong></button>
         </div>`;
     } else {
       const type = sleepTypeNow(s);
@@ -155,8 +153,7 @@ ctx.screens['p-home'] = {
         </div>
         ${clock ? `<div class="home-now"><span>L’écran de ${name} : <strong>${esc(clock.cur.info.label)}</strong>${clock.override ? ' (choisi par vous)' : ''}${stars ? ` · ${'★'.repeat(Math.min(stars, 8))} aujourd’hui` : ''}</span>
           ${clock.override ? '<button type="button" class="link-btn small" data-act="ov-clear">Revenir à l’horaire</button>' : ''}
-          <details><summary>Afficher un autre moment</summary>${chips('ov-pick', clock.today.filter((x) => x.type !== 'reveil').map((x) => [x.id, `${x.time} ${esc(x.info.label)}`]), clock.cur.id)}</details></div>` : ''}
-        <p class="muted small">Envie du rituel complet (bain, temps calme…) ? <button type="button" class="link-btn small" data-act="launch" data-v="soir">Lancer le rituel du soir</button></p>`;
+          <details><summary>Afficher un autre moment</summary>${chips('ov-pick', clock.today.filter((x) => x.type !== 'reveil').map((x) => [x.id, `${x.time} ${esc(x.info.label)}`]), clock.cur.id)}</details></div>` : ''}`;
     }
     return parentLayout('p-home', new Date().getHours() < 17 ? 'Bonjour !' : 'Bonsoir !', main);
   },
@@ -164,8 +161,7 @@ ctx.screens['p-home'] = {
 ctx.actions['ov-next'] = (b) => { setOverride(ctx.s, b.dataset.v); save(); go('home'); };
 ctx.actions['ov-pick'] = (b) => { setOverride(ctx.s, b.dataset.v); save(); go('home'); };
 ctx.actions['ov-clear'] = () => { delete ctx.s.clock.override; save(); render(); };
-ctx.actions['rit-next'] = () => nextStep();
-ctx.actions.launch = (b) => startRitual(b.dataset.v);
+ctx.actions['rit-next'] = () => sleepNow();
 ctx.actions['go-night'] = () => go('night');
 ctx.actions['stop-night'] = () => confirmBox('Arrêter la nuit ? L’écran revient à la journée.', 'Arrêter').then((ok) => ok && endNight(false, true).then(() => render()));
 
@@ -282,48 +278,7 @@ ctx.changes = ctx.changes || {};
 ctx.changes['child-name'] = (el) => { const v = el.value.trim(); if (v) { ctx.s.child.name = v; save(); } };
 ctx.changes['child-age'] = (el) => { ctx.s.child.age = el.value ? Number(el.value) : null; save(); render(); };
 
-// ---------- Rituels ----------
-let ritualTab = 'soir';
-ctx.screens['p-rituals'] = {
-  render() {
-    const list = ctx.s.rituals[ritualTab];
-    const rows = list.map((r, i) => {
-      const m = MOMENTS[r.id];
-      const fixed = r.id === 'histoire' || r.id === 'nuit';
-      return `<div class="ritual-row ${r.on ? '' : 'off'}">
-        <div class="updown"><button type="button" class="icon-btn" data-act="r-move" data-i="${i}" data-d="-1" aria-label="Monter ${m.label}">${icon(ICONS.up, 20)}</button><button type="button" class="icon-btn" data-act="r-move" data-i="${i}" data-d="1" aria-label="Descendre ${m.label}">${icon(ICONS.down, 20)}</button></div>
-        <span class="r-dot" style="background:${m.bg};${m.dark ? 'color:#FBF6EE' : ''}">${icon(ICONS[m.icon], 22)}</span>
-        <div class="r-name"><strong>${m.label}</strong><span class="muted">${r.id === 'histoire' ? (ritualTab === 'sieste' ? ctx.s.stories.napChoose : ctx.s.stories.choose) + ' histoire(s), selon leur durée' : (r.id === 'nuit' ? 'Jusqu’au réveil' : 'Lumière ' + Math.round(m.light * 100) + ' %')}</span></div>
-        ${fixed ? '<span class="r-dur muted">—</span>' : stepper(`r-dur" data-i="${i}`, r.dur + ' min', 'Durée ' + m.label)}
-        ${r.id === 'nuit' ? '<span class="r-sw"></span>' : `<button type="button" class="switch ${r.on ? 'on' : ''}" role="switch" aria-checked="${r.on}" aria-label="Activer ${m.label}" data-act="r-toggle" data-i="${i}"><span></span></button>`}
-      </div>`;
-    }).join('');
-    const missing = Object.keys(MOMENTS).filter((id) => !list.find((x) => x.id === id));
-    const body = `
-      <div class="seg" role="tablist">${[['soir', 'Soir'], ['sieste', 'Sieste']].map(([id, l]) => `<button type="button" role="tab" aria-selected="${ritualTab === id}" class="${ritualTab === id ? 'sel' : ''}" data-act="r-tab" data-v="${id}">${l}</button>`).join('')}</div>
-      ${ritualTab === 'soir' ? `<div class="card inline"><span>Heure habituelle du rituel</span>
-        <div class="pair"><button type="button" class="round sm" data-act="time" data-k="ritualStart" data-d="-15" aria-label="Plus tôt">−</button><strong class="h2">${ctx.s.schedule.ritualStart}</strong><button type="button" class="round sm" data-act="time" data-k="ritualStart" data-d="15" aria-label="Plus tard">+</button></div>
-        <span class="muted">Le bouton « Au dodo » clignote doucement à cette heure-là.</span></div>` : ''}
-      <div class="ritual-list">${rows}</div>
-      ${missing.length ? `<div class="chips">${missing.map((id) => `<button type="button" class="chip dashed" data-act="r-add" data-v="${id}">${icon(ICONS.plus, 18)}${MOMENTS[id].label}</button>`).join('')}</div>` : ''}`;
-    return parentLayout('p-rituals', 'Rituels', body);
-  },
-};
-ctx.actions['r-tab'] = (b) => { ritualTab = b.dataset.v; render(); };
-ctx.actions['r-toggle'] = (b) => { const r = ctx.s.rituals[ritualTab][b.dataset.i]; r.on = !r.on; save(); render(); };
-ctx.actions['r-dur'] = (b) => { const r = ctx.s.rituals[ritualTab][b.dataset.i]; r.dur = Math.max(5, Math.min(60, r.dur + 5 * Number(b.dataset.d))); save(); render(); };
-ctx.actions['r-move'] = (b) => {
-  const l = ctx.s.rituals[ritualTab], i = Number(b.dataset.i), j = i + Number(b.dataset.d);
-  if (j < 0 || j >= l.length || l[i].id === 'nuit' || l[j].id === 'nuit') return;
-  [l[i], l[j]] = [l[j], l[i]]; save(); render();
-};
-ctx.actions['r-add'] = (b) => {
-  const l = ctx.s.rituals[ritualTab];
-  const at = Math.max(0, l.findIndex((x) => x.id === 'nuit'));
-  l.splice(at, 0, { id: b.dataset.v, on: true, dur: 10 }); save(); render();
-};
-
-// ---------- Histoires et playlists ----------
+// ---------- Histoires ----------
 let storyTab = 'toutes', openPl = null;
 ctx.screens['p-stories'] = {
   render() {
@@ -514,31 +469,6 @@ ctx.actions['so-dur'] = (b) => { ctx.s.sound.dur = Number(b.dataset.v); save(); 
 ctx.actions['so-test'] = () => { if (ambiencePlaying()) stopAmbience(); else startAmbience({ ...ctx.s.sound, dur: 1 }); setTimeout(render, 50); };
 
 // ---------- Réveil ----------
-ctx.screens['p-wake'] = {
-  render() {
-    const w = ctx.s.wake, sc = ctx.s.schedule;
-    const anims = [['soleil', 'Lever de soleil', 'Le soleil monte doucement, puis le compagnon ouvre les yeux.'], ['etire', 'Il s’étire', 'Le compagnon bâille, s’étire et fait coucou.'], ['coucou', 'Petit coucou', 'Juste le compagnon qui sourit, sans animation.']];
-    const body = `
-      <div class="grid3">
-        <div class="card center"><span class="label">Semaine</span><span class="time-big">${sc.wakeWeek}</span><div class="pair"><button type="button" class="round sm" data-act="time" data-k="wakeWeek" data-d="-15" aria-label="Plus tôt">−</button><button type="button" class="round sm" data-act="time" data-k="wakeWeek" data-d="15" aria-label="Plus tard">+</button></div><span class="muted">lun → ven</span></div>
-        <div class="card center"><span class="label">Week-end</span><span class="time-big">${sc.wakeWeekend}</span><div class="pair"><button type="button" class="round sm" data-act="time" data-k="wakeWeekend" data-d="-15" aria-label="Plus tôt">−</button><button type="button" class="round sm" data-act="time" data-k="wakeWeekend" data-d="15" aria-label="Plus tard">+</button></div><span class="muted">sam, dim</span></div>
-        <div class="card center nap-on"><span class="label">Sieste</span>${sc.nap.on ? `<span class="time-big">${fmtDur(sc.nap.dur)}</span><div class="pair"><button type="button" class="round sm" data-act="nap-dur" data-d="-15" aria-label="Plus courte">−</button><button type="button" class="round sm" data-act="nap-dur" data-d="15" aria-label="Plus longue">+</button></div><span class="muted">à partir du lancement</span>` : '<span class="muted pad">Sieste désactivée</span>'}
-          <button type="button" class="switch ${sc.nap.on ? 'on' : ''}" role="switch" aria-checked="${sc.nap.on}" aria-label="Sieste" data-act="nap-toggle"><span></span></button></div>
-      </div>
-      <div class="card">
-        <strong>Animation du réveil</strong>
-        ${chips('w-anim', anims.map(([id, l]) => [id, l]), w.anim)}
-        <span class="muted small">${anims.find((a) => a[0] === w.anim)[2]}</span>
-      </div>
-      <div class="card list">
-        ${toggle('wake.soon', w.soon, 'Annonce « bientôt » 20 min avant', 'Le ciel s’éclaircit, mais le compagnon dort encore')}
-        <div class="row-setting"><div class="row-text"><span class="row-title">Éteindre l'écran après le réveil</span><span class="row-desc">Retour à l'accueil au bout de ${w.offAfter} min</span></div>${stepper('w-off', w.offAfter + ' min', 'Délai')}</div>
-      </div>
-      ${(() => { const c = sleepCheck(ctx.s); return `<div class="check ${c.ok ? 'ok' : 'warn'}">${icon(c.ok ? ICONS.check : ICONS.sun, 24)}<div><strong>Semaine : ${fmtDur(c.night)} de nuit${c.nap ? ' + ' + fmtDur(c.nap) + ' de sieste' : ''}</strong><span>${c.noAge ? 'Indiquez l’âge dans Tablette › Enfant pour savoir si c’est adapté.' : `${c.ok ? 'Dans' : 'En dehors de'} la plage conseillée pour ${c.ageTxt} (${c.rangeTxt} par 24 h).`}</span></div></div>`; })()}
-      <p class="muted small">Le réveil est visuel et silencieux : il ne réveille pas l'enfant, il lui indique quand il peut se lever. La tablette doit rester sur Lunoo, branchée.</p>`;
-    return parentLayout('p-wake', 'Quand le compagnon se réveille', body);
-  },
-};
 ctx.actions['w-anim'] = (b) => { ctx.s.wake.anim = b.dataset.v; save(); render(); };
 ctx.actions['w-off'] = (b) => { const w = ctx.s.wake; w.offAfter = Math.max(5, Math.min(60, w.offAfter + 5 * Number(b.dataset.d))); save(); render(); };
 
@@ -643,8 +573,8 @@ ctx.screens['p-clock'] = {
       else if (sl.fixed === 'nap') timeCtl = `<div class="pair"><button type="button" class="round sm" data-act="time" data-k="nap.start" data-d="-15" aria-label="Sieste plus tôt">−</button><span class="ck-time">${sc.nap.start}</span><button type="button" class="round sm" data-act="time" data-k="nap.start" data-d="15" aria-label="Sieste plus tard">+</button></div>`;
       else if (locked) timeCtl = `<div class="pair"><span class="ck-time">${sl.time}</span></div>`;
       else timeCtl = `<div class="pair"><button type="button" class="round sm" data-act="ck-time" data-id="${sl.id}" data-d="-15" aria-label="Plus tôt">−</button><span class="ck-time">${sl.time}</span><button type="button" class="round sm" data-act="ck-time" data-id="${sl.id}" data-d="15" aria-label="Plus tard">+</button></div>`;
-      const label = sl.fixed === 'wake' ? `<strong>Réveil</strong><span class="muted small">Week-end : ${sc.wakeWeekend} · réglable dans Réveil</span>`
-        : sl.fixed === 'nap' ? `<strong>Sieste</strong><span class="muted small">${fmtDur(sc.nap.dur)} · réglable dans Réveil</span>`
+      const label = sl.fixed === 'wake' ? `<strong>Réveil</strong><span class="muted small">Week-end : ${sc.wakeWeekend} · voir plus bas</span>`
+        : sl.fixed === 'nap' ? `<strong>Sieste</strong><span class="muted small">${fmtDur(sc.nap.dur)} · voir plus bas</span>`
         : locked ? `<strong>Après la sieste : ${info.label}</strong><span class="muted small">Ajoutez un moment juste après la sieste pour changer</span>`
         : `<label class="sr-only" for="ck-${sl.id}">Moment de ${sl.time}</label><select id="ck-${sl.id}" class="input sm" data-change="ck-type" data-id="${sl.id}">${typeOptions(sl.type)}</select>`;
       return `<div class="ck-row ${sl.id === cur.id ? 'now' : ''}">
@@ -672,6 +602,7 @@ ctx.screens['p-clock'] = {
             : '<div class="warn-box small">Ajoutez un moment « Dodo » pour que l’écran passe tout seul en mode nuit.</div>'}
         </div>
       </div>` : ''}
+      ${ck.on ? wakeNapBlock() : ''}
       <span class="label">Options de l’écran</span>
       <div class="card list">
         ${toggle('clock.on', ck.on, 'Horloge de la journée', `L’écran de ${childName()} montre le moment en cours : image, couleur et message changent tout seuls`)}
@@ -684,6 +615,35 @@ ctx.screens['p-clock'] = {
     return parentLayout('p-clock', 'La journée', body);
   },
 };
+// Réveil et sieste, sur le même écran que les moments.
+function wakeNapBlock() {
+  const w = ctx.s.wake, sc = ctx.s.schedule;
+  const anims = [['soleil', 'Lever de soleil', 'Le soleil monte doucement, puis l’animal ouvre les yeux.'], ['etire', 'Il s’étire', 'L’animal bâille, s’étire et fait coucou.'], ['coucou', 'Petit coucou', 'Juste l’animal qui sourit, sans animation.']];
+  const c = sleepCheck(ctx.s);
+  return `<div class="grid2">
+    <div class="card">
+      <strong>${icon(ICONS.sun, 22)} Le réveil</strong>
+      <div class="row-setting"><div class="row-text"><span class="row-title">Semaine</span></div><div class="pair"><button type="button" class="round sm" data-act="time" data-k="wakeWeek" data-d="-15" aria-label="Plus tôt">−</button><span class="ck-time">${sc.wakeWeek}</span><button type="button" class="round sm" data-act="time" data-k="wakeWeek" data-d="15" aria-label="Plus tard">+</button></div></div>
+      <div class="row-setting"><div class="row-text"><span class="row-title">Week-end</span></div><div class="pair"><button type="button" class="round sm" data-act="time" data-k="wakeWeekend" data-d="-15" aria-label="Plus tôt">−</button><span class="ck-time">${sc.wakeWeekend}</span><button type="button" class="round sm" data-act="time" data-k="wakeWeekend" data-d="15" aria-label="Plus tard">+</button></div></div>
+      <details><summary>Animation et options du réveil</summary>
+        ${chips('w-anim', anims.map(([id, l]) => [id, l]), w.anim)}
+        <span class="muted small">${anims.find((x) => x[0] === w.anim)[2]}</span>
+        ${toggle('wake.soon', w.soon, 'Annonce « bientôt » 20 min avant', 'Le ciel s’éclaircit, mais l’animal dort encore')}
+        <div class="row-setting"><div class="row-text"><span class="row-title">Revenir à la journée</span><span class="row-desc">${w.offAfter} min après le réveil</span></div>${stepper('w-off', w.offAfter + ' min', 'Délai')}</div>
+      </details>
+    </div>
+    <div class="card">
+      <div class="row-setting"><div class="row-text"><span class="row-title"><strong>${icon(ICONS.nuit, 22)} La sieste</strong></span></div>
+        <button type="button" class="switch ${sc.nap.on ? 'on' : ''}" role="switch" aria-checked="${sc.nap.on}" aria-label="Sieste" data-act="nap-toggle"><span></span></button></div>
+      ${sc.nap.on ? `<div class="row-setting"><div class="row-text"><span class="row-title">Début</span></div><div class="pair"><button type="button" class="round sm" data-act="time" data-k="nap.start" data-d="-15" aria-label="Plus tôt">−</button><span class="ck-time">${sc.nap.start}</span><button type="button" class="round sm" data-act="time" data-k="nap.start" data-d="15" aria-label="Plus tard">+</button></div></div>
+      <div class="row-setting"><div class="row-text"><span class="row-title">Durée</span></div><div class="pair"><button type="button" class="round sm" data-act="nap-dur" data-d="-15" aria-label="Plus courte">−</button><span class="ck-time">${fmtDur(sc.nap.dur)}</span><button type="button" class="round sm" data-act="nap-dur" data-d="15" aria-label="Plus longue">+</button></div></div>`
+        : '<span class="muted small">Pas de sieste. Activez-la si votre enfant en fait une.</span>'}
+    </div>
+  </div>
+  <div class="check ${c.ok ? 'ok' : 'warn'}">${icon(c.ok ? ICONS.check : ICONS.sun, 24)}<div><strong>${fmtDur(c.night)} de nuit${c.nap ? ' + ' + fmtDur(c.nap) + ' de sieste' : ''} en semaine</strong><span>${c.noAge ? 'Indiquez l’âge dans Tablette › Enfant pour savoir si c’est adapté.' : `${c.ok ? 'Dans' : 'En dehors de'} la plage conseillée pour ${c.ageTxt} (${c.rangeTxt} par 24 h).`}</span></div></div>
+  <p class="muted small">Le réveil est visuel et silencieux : il ne réveille pas l'enfant, il lui montre quand il peut se lever.</p>`;
+}
+
 ctx.actions['ck-time'] = (b) => {
   const sl = ctx.s.clock.slots.find((x) => x.id === b.dataset.id); if (!sl) return;
   sl.time = fromMin(toMin(sl.time) + Number(b.dataset.d)); save(); render();

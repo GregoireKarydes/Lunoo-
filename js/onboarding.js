@@ -1,5 +1,5 @@
 // Premier lancement, sans inscription : prénom, couleur, horaires. Les animaux suivent les moments de la journée.
-import { ctx, esc, go, save, render, toMin, fromMin, fmtDur, sleepCheck } from './ctx.js';
+import { ctx, esc, go, save, render, toMin, fromMin } from './ctx.js';
 import { ANIMALS, PALETTES, ICONS } from './data.js';
 import { animalSVG, moonSVG, icon } from './animal.js';
 import { requestPersistence } from './store.js';
@@ -101,38 +101,6 @@ ctx.screens['onb-color'] = {
   },
 };
 ctx.actions['onb-color'] = (b) => { ctx.s.child.color = b.dataset.v; save(); render(); };
-
-export function hoursBody() {
-  const s = ctx.s, sc = s.schedule, chk = sleepCheck(s);
-  return `<div class="grid3 hours">
-    <div class="card center">
-      <span class="card-title">${icon(ICONS.nuit, 24)}Début du rituel</span>
-      <span class="time-big">${sc.ritualStart}</span>
-      <div class="pair"><button type="button" class="round" data-act="time" data-k="ritualStart" data-d="-15" aria-label="15 minutes plus tôt">−</button><button type="button" class="round" data-act="time" data-k="ritualStart" data-d="15" aria-label="15 minutes plus tard">+</button></div>
-      <span class="muted">Endormissement vers ${fromMin(chk.bed)}</span>
-    </div>
-    <div class="card center">
-      <span class="card-title">${icon(ICONS.sun, 24)}Réveil</span>
-      <span class="time-big">${sc.wakeWeek}</span>
-      <div class="pair"><button type="button" class="round" data-act="time" data-k="wakeWeek" data-d="-15" aria-label="15 minutes plus tôt">−</button><button type="button" class="round" data-act="time" data-k="wakeWeek" data-d="15" aria-label="15 minutes plus tard">+</button></div>
-      <span class="muted">Week-end : ${sc.wakeWeekend}</span>
-    </div>
-    <div class="card center ${sc.nap.on ? 'nap-on' : ''}">
-      <div class="card-head"><span class="card-title">Sieste</span>
-        <button type="button" class="switch ${sc.nap.on ? 'on' : ''}" role="switch" aria-checked="${sc.nap.on}" aria-label="Sieste" data-act="nap-toggle"><span></span></button></div>
-      ${sc.nap.on ? `<span class="muted small">Début</span><span class="time-mid">${sc.nap.start}</span>
-        <div class="pair"><button type="button" class="round sm" data-act="time" data-k="nap.start" data-d="-15" aria-label="Sieste plus tôt">−</button><button type="button" class="round sm" data-act="time" data-k="nap.start" data-d="15" aria-label="Sieste plus tard">+</button></div>
-        <span class="muted small">Durée</span><span class="time-mid">${fmtDur(sc.nap.dur)}</span>
-        <div class="pair"><button type="button" class="round sm" data-act="nap-dur" data-d="-15" aria-label="Sieste plus courte">−</button><button type="button" class="round sm" data-act="nap-dur" data-d="15" aria-label="Sieste plus longue">+</button></div>`
-        : '<span class="muted pad">Pas de sieste. Vous pourrez l’ajouter à tout moment.</span>'}
-    </div>
-  </div>
-  <div class="check ${chk.ok ? 'ok' : 'warn'}">
-    ${icon(chk.ok ? ICONS.check : ICONS.sun, 26)}
-    <div><strong>Nuit ${fmtDur(chk.night)}${chk.nap ? ' + sieste ' + fmtDur(chk.nap) : ''} = ${fmtDur(chk.total)}</strong>
-    <span>${chk.noAge ? 'Indiquez l’âge dans Tablette › Enfant pour savoir si c’est adapté.' : `${chk.ok ? 'Dans la plage conseillée' : 'En dehors de la plage conseillée'} pour ${chk.ageTxt} : ${chk.rangeTxt} par 24 h, sieste comprise (Académie américaine de médecine du sommeil).`}</span></div>
-  </div>`;
-}
 
 ctx.actions.time = (b) => {
   const sc = ctx.s.schedule, k = b.dataset.k, d = Number(b.dataset.d);

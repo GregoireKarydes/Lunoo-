@@ -35,7 +35,7 @@ export function stepper(act, value, label) {
 // Chaque rubrique regroupe quelques pages, affichées en onglets sous le titre.
 const GROUPS = [
   { id: 'home', label: 'Accueil', icon: ICONS.home, pages: [['p-home', 'Accueil'], ['p-launch', 'Lancer']] },
-  { id: 'day', label: 'La journée', icon: ICONS.clock, pages: [['p-clock', 'Les moments'], ['p-wake', 'Réveil et sieste'], ['p-rituals', 'Rituel du soir']] },
+  { id: 'day', label: 'La journée', icon: ICONS.clock, pages: [['p-clock', 'La journée']] },
   { id: 'stories', label: 'Histoires', icon: ICONS.histoire, pages: [['p-stories', 'Histoires']] },
   { id: 'night', label: 'La nuit', icon: ICONS.nuit, pages: [['p-night', 'Veilleuse'], ['p-sounds', 'Son pour dormir']] },
   { id: 'tablet', label: 'Tablette', icon: ICONS.lock, pages: [['p-child', 'Enfant'], ['p-access', 'Code et sauvegarde'], ['p-anim', 'Animations']] },
