@@ -1,7 +1,7 @@
 // Lecture d'une histoire : voix enregistrée, fichier importé, ou voix de la tablette.
 import { audio } from './store.js';
 import { BUILTIN_STORIES, storyPage, storyMinutes } from './data.js';
-import { startBed, stopBed } from './sound.js';
+import { startBed, stopBed, chime } from './sound.js';
 
 export const recKey = (storyId, page) => `rec:${storyId}:${page}`;
 export const impKey = (storyId) => `imp:${storyId}`;
@@ -69,6 +69,14 @@ export async function playStory(story, settings, cb = {}) {
   }
 
   (async () => {
+    // Annonce du titre, pour que l'enfant comprenne qu'une nouvelle histoire commence.
+    if (cb.intro) {
+      try { chime(); } catch (e) { /* pas de son */ }
+      await new Promise((r) => setTimeout(r, 900));
+      if (!stopped) await speak(cb.intro);
+      if (!stopped) await new Promise((r) => setTimeout(r, 1000));
+    }
+    if (stopped) return;
     if (story.kind === 'import') {
       const blob = await audio.get(impKey(story.id));
       if (blob && !stopped) { cb.onProgress && cb.onProgress(0, 1, 1); await playBlob(blob); }

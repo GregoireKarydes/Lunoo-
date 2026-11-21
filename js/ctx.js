@@ -122,9 +122,9 @@ export async function launchNight(type, ids = [], childPicks = false) {
   if (ctx.s.clock && ctx.s.clock.override) { delete ctx.s.clock.override; save(); }
   ctx.nightOffUntil = null; await kv.del('nightOffUntil');
   setBedMuted(false);
-  ctx.ritual = { type, steps: [{ id: 'histoire', on: true, dur: 0 }, { id: 'nuit', on: true, dur: 0 }], idx: 0, chosen: [], ambience: true };
+  ctx.ritual = { type, steps: [{ id: 'histoire', on: true, dur: 0 }, { id: 'nuit', on: true, dur: 0 }], idx: 0, chosen: [], ambience: false };
   keepAwake();
-  startAmbience(ctx.s.sound);
+  stopAmbience(true); // le son de la nuit viendra après les histoires
   if (childPicks) return go('pick', { max: type === 'sieste' ? ctx.s.stories.napChoose : ctx.s.stories.choose });
   if (!ids.length) return enterNight(type);
   ctx.ritual.chosen = ids;
@@ -137,10 +137,7 @@ export function nextStep() {
   r.idx += 1;
   const step = r.steps[r.idx];
   if (!step) return enterNight(r.type);
-  if ((step.id === 'histoire' || step.id === 'nuit') && !r.ambience) {
-    r.ambience = true;
-    startAmbience(ctx.s.sound);
-  }
+  // Le son de la nuit (pluie, bruit blanc…) ne démarre qu'après les histoires : enterNight s'en charge.
   if (step.id === 'histoire') {
     const st = ctx.s.stories;
     const pl = st.mode === 'playlist' && ctx.s.playlists.find((p) => p.id === st.playlistId);

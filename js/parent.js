@@ -172,7 +172,7 @@ ctx.screens['p-launch'] = {
             ${st.minutes ? `<span class="muted small">${storyLength(st.minutes).label} · ${st.minutes} min</span>` : ''}
           </button>`; }).join('')}</div>` : ''}
       <div class="launch-bar">
-        <div><strong>${summary}</strong><span class="muted small">${wake}. Le son du soir démarre tout de suite.</span></div>
+        <div><strong>${summary}</strong><span class="muted small">${wake}. Le son de la nuit démarre après les histoires.</span></div>
         ${sel.length && launch.mode === 'pick' ? '<button type="button" class="btn ghost sm" data-act="ln-clear">Vider</button>' : ''}
         <button type="button" class="btn primary xl" data-act="ln-go" data-v="${type}">${icon(ICONS.nuit, 26)}Lancer</button>
       </div>`;

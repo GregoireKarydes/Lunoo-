@@ -247,7 +247,7 @@ ctx.screens.player = {
           <button type="button" class="hold-btn" data-holdact="skip">${icon(ICONS.next, 24)}<span>${next ? 'Histoire suivante' : 'Finir l’histoire'}</span><i class="hold-bar"></i></button>
           <button type="button" class="hold-btn" data-holdact="sleep">${icon(ICONS.nuit, 24)}<span>Dormir maintenant</span><i class="hold-bar"></i></button>
         </div>
-        <span class="muted-warm small">Pour les grands : gardez le doigt appuyé sur un bouton. ${ctx.ritual ? 'Après la dernière histoire, la nuit commence toute seule.' : ''}</span>
+        <span class="muted-warm small">Pour les grands : gardez le doigt appuyé sur un bouton. ${ctx.ritual ? 'Après la dernière histoire, la nuit et son doux bruit commencent tout seuls.' : ''}</span>
       </div>
     </div>`;
   },
@@ -258,7 +258,11 @@ ctx.screens.player = {
     if (!story) { if (ctx.ritual) nextStep(); else go('home'); return; }
     const prog = el.querySelector('#prog');
     let base = 0, span = 1;
+    const intro = p.i === 0
+      ? `C'est l'histoire de : ${story.title}.`
+      : `Une nouvelle histoire commence ! C'est l'histoire de : ${story.title}.`;
     playStory(story, ctx.s, {
+      intro,
       onProgress: (f, page, total) => { base = f; span = total ? 1 / total : 0; prog.style.width = (f * 100) + '%'; },
       onTime: (t) => { prog.style.width = ((base + t * span) * 100) + '%'; },
       onEnd: () => afterStory(p.i, chosen),
