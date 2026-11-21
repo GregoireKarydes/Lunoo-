@@ -82,7 +82,7 @@ function clockHome() {
         ${activityBadge(info)}
       </div>
       <div class="ch-side">
-        <div class="ch-sayrow"><div class="ch-clock">${clockFace(next, 132, dark)}<span class="ch-digital" id="ch-digital">${hhmm()}</span></div><span class="ch-say">${esc(info.say)}${waiting ? '<small>En attendant : temps libre</small>' : ''}</span></div>
+        <div class="ch-sayrow"><div class="ch-clock"><span class="ch-digital" id="ch-digital">${hhmm()}</span></div><span class="ch-say">${esc(info.say)}${waiting ? '<small>En attendant : temps libre</small>' : ''}</span></div>
         ${waiting ? '' : rewardBtn(cur)}
         <div class="ch-next">
           <span class="ch-next-ico" style="background:${next.info.bg}">${animalSVG(momentAnimal(next.type), { size: 56, asleep: !!next.info.asleep })}</span>
@@ -108,9 +108,10 @@ ctx.screens.home = {
     clearInterval(handTimer);
     handTimer = setInterval(() => {
       const d = new Date(), hEl = el.querySelector('#cf-h'), mEl = el.querySelector('#cf-m');
-      if (!hEl) return;
-      hEl.setAttribute('transform', `rotate(${((d.getHours() % 12) + d.getMinutes() / 60) * 30} 60 60)`);
-      mEl.setAttribute('transform', `rotate(${d.getMinutes() * 6} 60 60)`);
+      if (hEl) {
+        hEl.setAttribute('transform', `rotate(${((d.getHours() % 12) + d.getMinutes() / 60) * 30} 60 60)`);
+        mEl.setAttribute('transform', `rotate(${d.getMinutes() * 6} 60 60)`);
+      }
       const dg = el.querySelector('#ch-digital'); if (dg) dg.textContent = hhmm();
     }, 20000);
   },
