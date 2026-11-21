@@ -111,7 +111,7 @@ export function moonSVG(size = 36, cut = '#1F2250', fill = '#F5C451') {
 const FX = [['★', '#F5C451'], ['♥', '#E98A9A'], ['✦', '#8C84D9'], ['★', '#5FB89A'], ['♥', '#6FA8DC'], ['✦', '#E8875B']];
 document.addEventListener('pointerdown', (e) => {
   const a = e.target.closest && e.target.closest('.animal.awake');
-  if (!a) return;
+  if (!a || a.closest('.parent')) return; // seulement sur l'écran de l'enfant
   a.classList.remove('squash');
   void a.offsetWidth; // relance l'animation si on retouche tout de suite
   a.classList.add('squash');

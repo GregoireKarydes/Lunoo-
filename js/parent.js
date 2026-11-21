@@ -1,5 +1,5 @@
 // Espace parent : code, tableau de bord et réglages.
-import { ctx, esc, go, render, save, uid, fmtDur, sleepCheck, startRitual, nextStep, endNight, toMin, fromMin, awakeState } from './ctx.js';
+import { ctx, esc, go, render, save, uid, fmtDur, sleepCheck, startRitual, nextStep, launchNight, endNight, toMin, fromMin, awakeState } from './ctx.js';
 import { daySlots, currentSlot, setOverride } from './clock.js';
 import { ANIMALS, PALETTES, ICONS, MOMENTS, SOUNDS, CLOCK_TYPES, momentAnimal, storyMinutes, storyLength } from './data.js';
 import { animalSVG, icon } from './animal.js';
@@ -94,11 +94,12 @@ ctx.screens['p-home'] = {
         <div><strong class="h2">${childName()}, ${c.age} an${c.age > 1 ? 's' : ''}</strong><span class="muted">Tout est enregistré sur cette tablette et fonctionne hors ligne.</span></div>
       </div>
       ${ctx.night ? `<div class="card alert-card"><div><strong>${ctx.night.type === 'sieste' ? 'Sieste' : 'Nuit'} en cours</strong><span class="muted">Réveil prévu à ${new Date(ctx.night.wakeAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span></div>
-        <button type="button" class="btn ghost" data-act="go-night">Revenir à la nuit</button><button type="button" class="btn danger" data-act="stop-night">Arrêter</button></div>` : ''}
+        <button type="button" class="btn ghost" data-go="p-launch" data-p='{"type":"${ctx.night.type === 'sieste' ? 'sieste' : 'soir'}"}'>Histoires puis nuit</button><button type="button" class="btn ghost" data-act="go-night">Revenir à la nuit</button><button type="button" class="btn danger" data-act="stop-night">Arrêter</button></div>` : ''}
       ${screenControl(s)}
+      <div class="small muted">Rituel complet avec les étapes du soir (bain, temps calme…) : <button type="button" class="link-btn small" data-act="launch" data-v="soir">le lancer</button></div>
       <div class="grid2">
-        <button type="button" class="launch dark" data-act="launch" data-v="soir"><span class="launch-ico">${icon(ICONS.play, 28, 'fill="#1F2250" stroke="none"')}</span><span><strong>Lancer le rituel du soir</strong><span>Avec ${childName()} : les étapes du soir, les histoires, puis la nuit</span></span></button>
-        <button type="button" class="launch green" data-act="launch" data-v="sieste" ${sc.nap.on ? '' : 'disabled'}><span class="launch-ico">${icon(ICONS.play, 28, 'fill="#fff" stroke="none"')}</span><span><strong>Lancer la sieste</strong><span>${sc.nap.on ? `${sc.nap.start} · ${fmtDur(sc.nap.dur)}` : 'Sieste désactivée'}</span></span></button>
+        <button type="button" class="launch dark" data-go="p-launch" data-p='{"type":"soir"}'><span class="launch-ico">${icon(ICONS.nuit, 28)}</span><span><strong>Lancer la nuit</strong><span>Choisir les histoires, puis la nuit commence toute seule</span></span></button>
+        <button type="button" class="launch green" data-go="p-launch" data-p='{"type":"sieste"}' ${sc.nap.on ? '' : 'disabled'}><span class="launch-ico">${icon(ICONS.play, 28, 'fill="#fff" stroke="none"')}</span><span><strong>Lancer la sieste</strong><span>${sc.nap.on ? `${sc.nap.start} · ${fmtDur(sc.nap.dur)} · histoires puis sieste` : 'Sieste désactivée'}</span></span></button>
       </div>
       <div class="grid2">
         <button type="button" class="card link-card" data-go="p-rituals"><span class="card-row"><strong>Rituels</strong><span class="edit">Modifier</span></span><div class="mini-chips">${steps('soir')}</div><span class="muted">Sieste : ${s.rituals.sieste.filter((x) => x.on).map((x) => MOMENTS[x.id].label.toLowerCase()).join(', ')}</span></button>
@@ -118,6 +119,53 @@ ctx.screens['p-home'] = {
 ctx.actions.launch = (b) => startRitual(b.dataset.v);
 ctx.actions['go-night'] = () => go('night');
 ctx.actions['stop-night'] = () => endNight(false, true).then(() => render());
+
+// ---------- Lancer la nuit (ou la sieste) : choisir les histoires, puis lancer ----------
+let launch = { type: 'soir', ids: [], mode: 'pick' };
+ctx.screens['p-launch'] = {
+  mount(el, p) {},
+  render(p) {
+    const s = ctx.s, type = p.type === 'sieste' ? 'sieste' : 'soir';
+    if (launch.type !== type) launch = { type, ids: [], mode: 'pick' };
+    const stories = allStories(s);
+    const sel = launch.ids;
+    const total = sel.reduce((n, id) => n + ((stories.find((x) => x.id === id) || {}).minutes || 0), 0);
+    const wake = type === 'sieste' ? `réveil dans ${fmtDur(s.schedule.nap.dur)}` : `réveil à ${s.schedule.wakeWeek} (${s.schedule.wakeWeekend} le week-end)`;
+    const summary = launch.mode === 'child' ? `${childName()} choisit ${type === 'sieste' ? s.stories.napChoose : s.stories.choose} histoire(s) sur la tablette, puis ${type === 'sieste' ? 'la sieste' : 'la nuit'} commence`
+      : (launch.mode === 'none' || !sel.length) ? `${type === 'sieste' ? 'La sieste' : 'La nuit'} commence tout de suite`
+      : `${sel.length} histoire${sel.length > 1 ? 's' : ''} · environ ${total} min, puis ${type === 'sieste' ? 'la sieste' : 'la nuit'}`;
+    const body = `
+      ${chips('ln-mode', [['pick', 'Je choisis les histoires'], ['child', `${childName()} choisit`], ['none', 'Sans histoire']], launch.mode)}
+      ${launch.mode === 'pick' ? `
+        ${s.playlists.length ? `<div class="toolbar"><span class="label">Playlists :</span>${chips('ln-pl', s.playlists.map((pl) => [pl.id, esc(pl.name)]), '')}</div>` : ''}
+        <div class="pstory-grid">${stories.map((st) => { const i = sel.indexOf(st.id); return `
+          <button type="button" class="pstory ln-story ${i >= 0 ? 'sel' : ''}" aria-pressed="${i >= 0}" data-act="ln-story" data-v="${esc(st.id)}">
+            <div class="thumb sm" style="background:${st.bg}">${animalSVG(st.animal || 'hibou', { size: 80 })}${i >= 0 ? `<span class="order" style="background:var(--navy)">${i + 1}</span>` : ''}</div>
+            <span class="story-title sm">${esc(st.title)}</span>
+            ${st.minutes ? `<span class="muted small">${storyLength(st.minutes).label} · ${st.minutes} min</span>` : ''}
+          </button>`; }).join('')}</div>` : ''}
+      <div class="launch-bar">
+        <div><strong>${summary}</strong><span class="muted small">${wake}. Le son du soir démarre tout de suite.</span></div>
+        ${sel.length && launch.mode === 'pick' ? '<button type="button" class="btn ghost sm" data-act="ln-clear">Vider</button>' : ''}
+        <button type="button" class="btn primary xl" data-act="ln-go" data-v="${type}">${icon(ICONS.nuit, 26)}Lancer</button>
+      </div>`;
+    return parentLayout('p-home', type === 'sieste' ? 'Lancer la sieste' : 'Lancer la nuit', body);
+  },
+};
+ctx.actions['ln-mode'] = (b) => { launch.mode = b.dataset.v; render(); };
+ctx.actions['ln-story'] = (b) => {
+  const id = b.dataset.v, i = launch.ids.indexOf(id);
+  if (i >= 0) launch.ids.splice(i, 1); else if (launch.ids.length < 5) launch.ids.push(id);
+  render();
+};
+ctx.actions['ln-pl'] = (b) => { const pl = ctx.s.playlists.find((x) => x.id === b.dataset.v); if (pl) launch.ids = [...pl.storyIds]; render(); };
+ctx.actions['ln-clear'] = () => { launch.ids = []; render(); };
+ctx.actions['ln-go'] = (b) => {
+  const ids = launch.mode === 'pick' ? [...launch.ids] : [];
+  const child = launch.mode === 'child';
+  launch = { type: 'soir', ids: [], mode: 'pick' };
+  launchNight(b.dataset.v, ids, child);
+};
 
 // ---------- Enfant ----------
 ctx.screens['p-child'] = {

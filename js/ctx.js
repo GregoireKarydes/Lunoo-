@@ -113,6 +113,23 @@ export function startRitual(type) {
   nextStep();
 }
 
+/**
+ * Lancé par un parent : histoires choisies (ou choisies par l'enfant), puis la nuit ou la sieste.
+ * ids : histoires dans l'ordre ; childPicks : l'enfant choisit sur la tablette ; aucun des deux : nuit tout de suite.
+ */
+export async function launchNight(type, ids = [], childPicks = false) {
+  if (ctx.night) { ctx.night = null; await kv.del('night'); } // une nuit lancée toute seule par l'horloge
+  if (ctx.s.clock && ctx.s.clock.override) { delete ctx.s.clock.override; save(); }
+  ctx.nightOffUntil = null; await kv.del('nightOffUntil');
+  ctx.ritual = { type, steps: [{ id: 'histoire', on: true, dur: 0 }, { id: 'nuit', on: true, dur: 0 }], idx: 0, chosen: [], ambience: true };
+  keepAwake();
+  startAmbience(ctx.s.sound);
+  if (childPicks) return go('pick', { max: type === 'sieste' ? ctx.s.stories.napChoose : ctx.s.stories.choose });
+  if (!ids.length) return enterNight(type);
+  ctx.ritual.chosen = ids;
+  go('player', { i: 0 });
+}
+
 export function nextStep() {
   const r = ctx.ritual;
   if (!r) return go('home');
