@@ -13,6 +13,7 @@ const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMin
 
 // ---------- Accueil ----------
 // Animal du moment + son décor animé (bulles au bain, gouttes sous la douche…).
+export { hhmm };
 export function sceneBlock(kind, asleep, size) {
   const a = momentAnimal(kind);
   const sc = sceneFor(kind, { asleep });
@@ -59,6 +60,7 @@ function rewardBtn(cur) {
   return `<button type="button" class="done-btn" data-act="child-done" data-type="${cur.type}" data-slot="${esc(cur.id)}">${icon(cur.type === 'dents' ? ICONS.dents : ICONS.check, 34)}${esc(buttonLabel(cur.type))}</button>`;
 }
 
+const hhmm = () => { const d = new Date(); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
 let handTimer = null;
 function clockHome() {
   const s = ctx.s, c = s.child;
@@ -77,7 +79,7 @@ function clockHome() {
         ${activityBadge(info)}
       </div>
       <div class="ch-side">
-        <div class="ch-sayrow">${clockFace(next, 132, dark)}<span class="ch-say">${esc(info.say)}</span></div>
+        <div class="ch-sayrow"><div class="ch-clock">${clockFace(next, 132, dark)}<span class="ch-digital" id="ch-digital">${hhmm()}</span></div><span class="ch-say">${esc(info.say)}</span></div>
         ${rewardBtn(cur)}
         <div class="ch-next">
           <span class="ch-next-ico">${icon(ICONS[next.info.icon] || ICONS.clock, 30)}</span>
@@ -106,6 +108,7 @@ ctx.screens.home = {
       if (!hEl) return;
       hEl.setAttribute('transform', `rotate(${((d.getHours() % 12) + d.getMinutes() / 60) * 30} 60 60)`);
       mEl.setAttribute('transform', `rotate(${d.getMinutes() * 6} 60 60)`);
+      const dg = el.querySelector('#ch-digital'); if (dg) dg.textContent = hhmm();
     }, 20000);
   },
   unmount() { clearInterval(handTimer); },

@@ -3,7 +3,7 @@ import { ctx, esc, go } from './ctx.js';
 import { CLOCK_TYPES, ANIMALS, ICONS, momentAnimal } from './data.js';
 import { icon } from './animal.js';
 import { parentLayout } from './ui.js';
-import { sceneBlock, clockFace } from './child.js';
+import { sceneBlock, clockFace, hhmm } from './child.js';
 import { celebrate } from './rewards.js';
 
 const MOMENT_KINDS = ['reveil', 'habiller', 'manger', 'ecole', 'jeu', 'sortie', 'douche', 'bain', 'dents', 'calme', 'histoire', 'sieste', 'dodo'];
@@ -54,7 +54,7 @@ ctx.screens['anim-preview'] = {
     return `<div class="preview-host"><div class="screen child home clockhome ${t.dark ? 'dark' : ''}" style="background:${t.bg}">
       <div class="ch-main">
         <div class="ch-animal">${sceneBlock(kind, !!t.asleep, 340)}</div>
-        <div class="ch-side"><div class="ch-sayrow">${clockFace(fake, 132, !!t.dark)}<span class="ch-say">${esc(t.say)}</span></div>
+        <div class="ch-side"><div class="ch-sayrow"><div class="ch-clock">${clockFace(fake, 132, !!t.dark)}<span class="ch-digital">${hhmm()}</span></div><span class="ch-say">${esc(t.say)}</span></div>
           ${k === 'brush' ? '<button type="button" class="done-btn" data-go="brush" data-p=\'{"back":"p-anim"}\'>Lancer le minuteur</button>' : ''}
           ${k === 'fete' ? '<button type="button" class="done-btn" data-act="prev-fete">Rejouer la fête</button>' : ''}
         </div>
