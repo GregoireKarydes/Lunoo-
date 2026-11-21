@@ -12,7 +12,7 @@ const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMin
 
 // ---------- Accueil ----------
 function activityBadge(info, size = 120) {
-  return `<span class="act-badge" style="width:${size}px;height:${size}px;background:${info.dark ? '#2E3270' : '#fff'};color:${info.dark ? '#F5C451' : '#1F2250'}">${icon(ICONS[info.icon] || ICONS.clock, Math.round(size * 0.52))}</span>`;
+  return `<span class="act-badge pulse" style="width:${size}px;height:${size}px;background:${info.dark ? '#2E3270' : '#fff'};color:${info.dark ? '#F5C451' : '#1F2250'}">${icon(ICONS[info.icon] || ICONS.clock, Math.round(size * 0.52))}</span>`;
 }
 
 // « Au dodo » n'apparaît que le soir (dès 1 h avant le rituel), pour éviter une nuit lancée à midi.

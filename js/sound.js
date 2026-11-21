@@ -152,3 +152,15 @@ export function chime() {
     o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + 1.7);
   });
 }
+
+// Petit « pop » court, au toucher de l'animal (une note qui monte, sans bruit fort).
+export function pop() {
+  const ac = audioContext();
+  const o = ac.createOscillator(); const g = ac.createGain();
+  o.type = 'sine';
+  const t = ac.currentTime;
+  o.frequency.setValueAtTime(520, t); o.frequency.exponentialRampToValueAtTime(980, t + 0.16);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.07, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+  o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + 0.25);
+}

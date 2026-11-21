@@ -1,5 +1,6 @@
 // Dessin des cinq compagnons en SVG (endormis ou réveillés).
 import { PALETTES } from './data.js';
+import { pop } from './sound.js';
 
 const DARK = '#1F2250';
 
@@ -59,6 +60,33 @@ export function animalSVG(animal, opts = {}) {
 export function moonSVG(size = 36, cut = '#1F2250', fill = '#F5C451') {
   return `<svg width="${size}" height="${size}" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15" fill="${fill}"/><circle cx="25" cy="13" r="13" fill="${cut}"/></svg>`;
 }
+
+// Réaction au toucher : quand l'animal est réveillé, il s'écrase, rebondit et lâche quelques étoiles.
+// Les animaux endormis ne réagissent pas (pas de stimulation au moment du dodo).
+const FX = [['★', '#F5C451'], ['♥', '#E98A9A'], ['✦', '#8C84D9'], ['★', '#5FB89A'], ['♥', '#6FA8DC'], ['✦', '#E8875B']];
+document.addEventListener('pointerdown', (e) => {
+  const a = e.target.closest && e.target.closest('.animal.awake');
+  if (!a) return;
+  a.classList.remove('squash');
+  void a.offsetWidth; // relance l'animation si on retouche tout de suite
+  a.classList.add('squash');
+  a.addEventListener('animationend', () => a.classList.remove('squash'), { once: true });
+  try { pop(); } catch (err) { /* pas de son si le navigateur le refuse */ }
+  const r = a.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  FX.forEach(([ch, col], i) => {
+    const s = document.createElement('span');
+    s.className = 'fx-star';
+    s.textContent = ch;
+    s.style.left = cx + 'px';
+    s.style.top = cy + 'px';
+    s.style.setProperty('--a', (i * 60 + Math.random() * 20) + 'deg');
+    s.style.setProperty('--r', (90 + Math.random() * 60) + 'px');
+    s.style.setProperty('--c', col);
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 900);
+  });
+});
 
 export function icon(d, size = 24, extra = '') {
   // Les attributs de « extra » passent en premier : en HTML, le premier attribut en double l'emporte.

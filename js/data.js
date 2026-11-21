@@ -1,12 +1,12 @@
 // Données de l'appli : animaux, couleurs, moments du rituel, histoires fournies.
 
 export const PALETTES = {
-  lavande: { label: 'Lavande', body: '#8C84D9', belly: '#C9C3F2', bg: '#EEEBFB' },
-  corail: { label: 'Corail', body: '#E8875B', belly: '#FBE3D3', bg: '#FDEEE4' },
-  ciel: { label: 'Ciel', body: '#6FA8DC', belly: '#D3E6F7', bg: '#E8F2FB' },
-  miel: { label: 'Miel', body: '#E2B24C', belly: '#F8E6B8', bg: '#FCF3DC' },
-  menthe: { label: 'Menthe', body: '#5FB89A', belly: '#CFEDE1', bg: '#E7F6EF' },
-  rose: { label: 'Rose', body: '#E58BB0', belly: '#FAD9E6', bg: '#FCEDF3' },
+  lavande: { label: 'Lavande', body: '#7D74E6', belly: '#C9C3F2', bg: '#EEEBFB' },
+  corail: { label: 'Corail', body: '#F07A4A', belly: '#FBE3D3', bg: '#FDEEE4' },
+  ciel: { label: 'Ciel', body: '#4FA3E8', belly: '#D3E6F7', bg: '#E8F2FB' },
+  miel: { label: 'Miel', body: '#F2B01E', belly: '#F8E6B8', bg: '#FCF3DC' },
+  menthe: { label: 'Menthe', body: '#3DB58A', belly: '#CFEDE1', bg: '#E7F6EF' },
+  rose: { label: 'Rose', body: '#EE6FA0', belly: '#FAD9E6', bg: '#FCEDF3' },
 };
 
 export const ANIMALS = {
