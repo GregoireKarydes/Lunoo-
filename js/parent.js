@@ -1,6 +1,7 @@
 // Espace parent : code, tableau de bord et réglages.
-import { ctx, esc, go, render, save, uid, fmtDur, sleepCheck, startRitual, endNight } from './ctx.js';
-import { ANIMALS, PALETTES, ICONS, MOMENTS, SOUNDS } from './data.js';
+import { ctx, esc, go, render, save, uid, fmtDur, sleepCheck, startRitual, endNight, toMin, fromMin } from './ctx.js';
+import { daySlots, currentSlot } from './clock.js';
+import { ANIMALS, PALETTES, ICONS, MOMENTS, SOUNDS, CLOCK_TYPES } from './data.js';
 import { animalSVG, icon } from './animal.js';
 import { parentLayout, toggle, chips, stepper, toast, ask, confirmBox } from './ui.js';
 import { hoursBody } from './onboarding.js';
@@ -87,7 +88,7 @@ ctx.screens['p-home'] = {
 };
 ctx.actions.launch = (b) => startRitual(b.dataset.v);
 ctx.actions['go-night'] = () => go('night');
-ctx.actions['stop-night'] = () => endNight(false).then(() => render());
+ctx.actions['stop-night'] = () => endNight(false, true).then(() => render());
 
 // ---------- Enfant ----------
 ctx.screens['p-child'] = {
@@ -446,4 +447,73 @@ ctx.actions['a-reset'] = async () => {
   if (!(await confirmBox('Effacer tous les réglages et toutes les voix enregistrées de cette tablette ? C’est définitif.', 'Tout effacer'))) return;
   indexedDB.deleteDatabase('lunoo');
   location.reload();
+};
+
+// ---------- Horloge intelligente ----------
+ctx.screens['p-clock'] = {
+  render() {
+    const s = ctx.s, ck = s.clock, sc = s.schedule;
+    const ref = new Date(); while (ref.getDay() === 0 || ref.getDay() === 6) ref.setDate(ref.getDate() + 1);
+    const slots = daySlots(s, ref); // on règle la journée type de la semaine
+    const { cur } = currentSlot(s);
+    const typeOptions = (sel) => Object.entries(CLOCK_TYPES).filter(([id]) => id !== 'reveil' && id !== 'sieste')
+      .map(([id, t]) => `<option value="${id}" ${id === sel ? 'selected' : ''}>${t.label}</option>`).join('');
+    const rows = slots.map((sl) => {
+      const info = sl.info;
+      const locked = sl.fixed === 'napend';
+      let timeCtl;
+      if (sl.fixed === 'wake') timeCtl = `<div class="pair"><button type="button" class="round sm" data-act="time" data-k="wakeWeek" data-d="-15" aria-label="Réveil plus tôt">−</button><span class="ck-time">${sc.wakeWeek}</span><button type="button" class="round sm" data-act="time" data-k="wakeWeek" data-d="15" aria-label="Réveil plus tard">+</button></div>`;
+      else if (sl.fixed === 'nap') timeCtl = `<div class="pair"><button type="button" class="round sm" data-act="time" data-k="nap.start" data-d="-15" aria-label="Sieste plus tôt">−</button><span class="ck-time">${sc.nap.start}</span><button type="button" class="round sm" data-act="time" data-k="nap.start" data-d="15" aria-label="Sieste plus tard">+</button></div>`;
+      else if (locked) timeCtl = `<div class="pair"><span class="ck-time">${sl.time}</span></div>`;
+      else timeCtl = `<div class="pair"><button type="button" class="round sm" data-act="ck-time" data-id="${sl.id}" data-d="-15" aria-label="Plus tôt">−</button><span class="ck-time">${sl.time}</span><button type="button" class="round sm" data-act="ck-time" data-id="${sl.id}" data-d="15" aria-label="Plus tard">+</button></div>`;
+      const label = sl.fixed === 'wake' ? `<strong>Réveil</strong><span class="muted small">Week-end : ${sc.wakeWeekend} · réglable dans Réveil</span>`
+        : sl.fixed === 'nap' ? `<strong>Sieste</strong><span class="muted small">${fmtDur(sc.nap.dur)} · réglable dans Réveil</span>`
+        : locked ? `<strong>Après la sieste : ${info.label}</strong><span class="muted small">Ajoutez un moment juste après la sieste pour changer</span>`
+        : `<label class="sr-only" for="ck-${sl.id}">Moment de ${sl.time}</label><select id="ck-${sl.id}" class="input sm" data-change="ck-type" data-id="${sl.id}">${typeOptions(sl.type)}</select>`;
+      return `<div class="ck-row ${sl.id === cur.id ? 'now' : ''}">
+        ${timeCtl}
+        <span class="ck-ico" style="background:${info.bg};${info.dark ? 'color:#F5C451' : ''}">${icon(ICONS[info.icon] || ICONS.clock, 26)}</span>
+        <div class="ck-label">${label}</div>
+        ${sl.fixed ? '<span class="ck-del"></span>' : `<button type="button" class="icon-btn" data-act="ck-del" data-id="${sl.id}" aria-label="Supprimer ce moment">${icon(ICONS.trash, 18)}</button>`}
+      </div>`;
+    }).join('');
+    const hasDodo = ck.slots.some((x) => x.type === 'dodo');
+    const body = `
+      <div class="card list">
+        ${toggle('clock.on', ck.on, 'Horloge de la journée', `L’écran de ${childName()} montre le moment en cours : image, couleur et message changent tout seuls`)}
+        ${toggle('clock.chime', ck.chime, 'Petit carillon à chaque changement', 'Un son très doux quand on passe au moment suivant')}
+      </div>
+      ${ck.on ? `
+      <div class="split">
+        <div class="col">
+          <div class="ck-list">${rows}</div>
+          ${sc.wakeWeekend !== sc.wakeWeek ? `<span class="muted small">Le week-end, les moments du matin sont décalés avec le réveil (${sc.wakeWeekend}).</span>` : ''}
+          <span class="label">Ajouter un moment</span>
+          <div class="chips">${Object.entries(CLOCK_TYPES).filter(([id]) => id !== 'reveil' && id !== 'sieste').map(([id, t]) => `<button type="button" class="chip dashed" data-act="ck-add" data-v="${id}">${icon(ICONS[t.icon] || ICONS.clock, 18)}${t.label}</button>`).join('')}</div>
+        </div>
+        <div class="side-preview"><span class="label">En ce moment</span>
+          <div class="preview sm" style="background:${cur.info.bg};${cur.info.dark ? 'color:#FBF6EE' : ''}">${animalSVG(s.child.animal, { palette: s.child.color, size: 140, asleep: !!cur.info.asleep })}<span class="preview-say">${esc(cur.info.say)}</span></div>
+          ${hasDodo
+            ? `<span class="muted small">Pendant « Dodo », l'écran passe tout seul en mode nuit jusqu'au réveil (${sc.wakeWeek} en semaine, ${sc.wakeWeekend} le week-end). Si ${childName()} se lève avant, il voit que c'est encore l'heure de dormir.</span>`
+            : '<div class="warn-box small">Ajoutez un moment « Dodo » pour que l’écran passe tout seul en mode nuit.</div>'}
+        </div>
+      </div>` : ''}`;
+    return parentLayout('p-clock', 'Horloge de la journée', body);
+  },
+};
+ctx.actions['ck-time'] = (b) => {
+  const sl = ctx.s.clock.slots.find((x) => x.id === b.dataset.id); if (!sl) return;
+  sl.time = fromMin(toMin(sl.time) + Number(b.dataset.d)); save(); render();
+};
+ctx.actions['ck-del'] = (b) => { ctx.s.clock.slots = ctx.s.clock.slots.filter((x) => x.id !== b.dataset.id); save(); render(); };
+ctx.actions['ck-add'] = (b) => {
+  const now = new Date();
+  const m = Math.ceil((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
+  ctx.s.clock.slots.push({ id: uid(), type: b.dataset.v, time: fromMin(m) });
+  save(); render();
+  toast(`« ${CLOCK_TYPES[b.dataset.v].label} » ajouté à ${fromMin(m)}, réglez l’heure avec − et +`);
+};
+ctx.changes['ck-type'] = (el) => {
+  const sl = ctx.s.clock.slots.find((x) => x.id === el.dataset.id); if (!sl) return;
+  sl.type = el.value; save(); render();
 };

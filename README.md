@@ -13,6 +13,7 @@ Lunoo transforme une tablette (ou un ancien téléphone) en compagnon du soir : 
 - **Studio voix** : enregistrement page par page avec le micro de la tablette (MediaRecorder).
 - **Histoires fournies** : 6 textes originaux personnalisés avec le prénom et l'animal de l'enfant, lus par la voix de synthèse de la tablette tant que personne ne les a enregistrés.
 - **Import de sons** : un parent peut ajouter un fichier audio dont il a les droits.
+- **Horloge intelligente** : le parent règle les moments de la journée (réveil, s'habiller, manger, douche, dents, jeu, école, sieste, dodo…). L'écran de l'enfant change tout seul d'image, de couleur et de message, montre ce qui vient ensuite et toute la journée en pictogrammes. Pendant « Dodo », la tablette passe d'elle-même en mode nuit jusqu'au réveil : si l'enfant se lève à 5 h, il voit que c'est encore l'heure de dormir. Le week-end, les moments du matin sont décalés avec le réveil.
 
 ## Mettre en ligne
 
@@ -54,6 +55,7 @@ index.html, manifest.webmanifest, sw.js
 css/app.css
 js/app.js         démarrage, clics, appui long
 js/ctx.js         état, navigation, moteur du rituel et de la nuit
+js/clock.js       horloge intelligente (créneaux de la journée)
 js/store.js       IndexedDB, réglages, sauvegarde
 js/data.js        animaux, couleurs, moments, histoires
 js/animal.js      dessins SVG

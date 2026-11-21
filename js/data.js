@@ -25,6 +25,24 @@ export const MOMENTS = {
   nuit: { label: 'Nuit', bg: '#000000', dark: true, light: 0, text: 'Bonne nuit', icon: 'nuit' },
 };
 
+// Horloge intelligente : types de créneaux de la journée.
+// reveil et sieste suivent les réglages du réveil ; dodo ouvre la période de sommeil.
+export const CLOCK_TYPES = {
+  reveil: { label: 'Réveil', say: "C'est l'heure de se lever !", bg: '#FDE7B0', icon: 'sun' },
+  manger: { label: 'Manger', say: "C'est l'heure de manger !", bg: '#FFE0CC', icon: 'manger' },
+  douche: { label: 'Douche', say: "C'est l'heure de la douche !", bg: '#D6EEF7', icon: 'douche' },
+  bain: { label: 'Bain', say: "C'est l'heure du bain !", bg: '#D6EEF7', icon: 'bain' },
+  dents: { label: 'Dents', say: "On se brosse les dents !", bg: '#E8F2FB', icon: 'dents' },
+  habiller: { label: "S'habiller", say: "C'est l'heure de s'habiller !", bg: '#FCEDF3', icon: 'habiller' },
+  jeu: { label: 'Jeu', say: "C'est l'heure de jouer !", bg: '#FCEBC0', icon: 'jeu' },
+  ecole: { label: 'École', say: "C'est l'heure de partir à l'école !", bg: '#E6E3FA', icon: 'ecole' },
+  sortie: { label: 'Dehors', say: "On va se promener !", bg: '#D7EFE3', icon: 'sortie' },
+  calme: { label: 'Calme', say: 'Un moment tout calme', bg: '#D7EFE3', icon: 'calme' },
+  histoire: { label: 'Histoire', say: "C'est l'heure de l'histoire", bg: '#E6E3FA', icon: 'histoire' },
+  sieste: { label: 'Sieste', say: "C'est l'heure de la sieste", bg: '#2E3270', dark: true, asleep: true, icon: 'nuit' },
+  dodo: { label: 'Dodo', say: "C'est l'heure de dormir", bg: '#1F2250', dark: true, asleep: true, icon: 'nuit' },
+};
+
 export const SOUNDS = {
   pluie: { label: 'Pluie douce' },
   vagues: { label: 'Vagues' },
@@ -60,6 +78,13 @@ export const ICONS = {
   upload: 'M12 16V4M7 9l5-5 5 5M4 20h16',
   download: 'M12 4v12M7 11l5 5 5-5M4 20h16',
   close: 'M6 6l12 12M18 6L6 18',
+  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
+  manger: 'M7 2v8a2 2 0 0 0 4 0V2M9 2v20M17 2c-1.7 0-3 2.2-3 5s1.3 4 3 4v11M17 2v9',
+  douche: 'M4 20V8a5 5 0 0 1 10 0M11 8h6l-1 3h-4zM12 14v1M15 14v1M18 14v1M12 18v1M15 18v1M18 18v1',
+  dents: 'M2 15h11M13 13h8v4h-8zM14 13V9M17 13V9M20 13V9',
+  habiller: 'M8 3l4 3 4-3 5 4-3 4-2-1v11H8V10l-2 1-3-4z',
+  ecole: 'M6 8a6 6 0 0 1 12 0v12H6zM9 14h6M9 4.5V3h6v1.5',
+  sortie: 'M12 22v-6M8 16h8l-4-6 3 0-3-6-3 6h3z',
 };
 
 // Histoires fournies : des textes originaux, lus par la voix de la tablette

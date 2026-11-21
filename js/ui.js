@@ -34,6 +34,7 @@ export function stepper(act, value, label) {
 const NAV = [
   ['p-home', 'Accueil', ICONS.home],
   ['p-child', 'L’enfant', ICONS.user],
+  ['p-clock', 'Horloge', ICONS.clock],
   ['p-rituals', 'Rituels', ICONS.list],
   ['p-stories', 'Histoires', ICONS.histoire],
   ['p-night', 'Veilleuse et nuit', ICONS.nuit],

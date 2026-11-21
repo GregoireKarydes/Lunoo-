@@ -1,7 +1,8 @@
 // Démarrage de Lunoo : chargement, navigation, appui long, mode nuit.
-import { ctx, go, render, keepAwake, nightPhase } from './ctx.js';
+import { ctx, go, render, keepAwake, nightPhase, enterNight } from './ctx.js';
 import { kv, loadSettings } from './store.js';
-import { audioContext } from './sound.js';
+import { audioContext, chime } from './sound.js';
+import { currentSlot, isSleepTime, sleepStartedAt } from './clock.js';
 import './onboarding.js';
 import './child.js';
 import { openParent } from './parent.js';
@@ -75,8 +76,31 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// L'accueil se met à jour chaque minute (bouton « Au dodo » qui clignote à l'heure du rituel).
-setInterval(() => { if (ctx.route === 'home') render(); }, 60000);
+// ---------- Horloge intelligente ----------
+// Pendant la période de sommeil, l'écran de l'enfant passe tout seul en mode nuit :
+// s'il se lève à 5 h, il voit que c'est encore l'heure de dormir.
+const IDLE_ROUTES = ['home', 'pick', 'player'];
+async function clockTick() {
+  if (!ctx.s || !ctx.s.onboarded || !ctx.s.clock.on) return false;
+  if (ctx.night || ctx.ritual) return false;
+  if (!IDLE_ROUTES.includes(ctx.route)) return false;
+  if (ctx.route !== 'home' && ctx.free) return false; // histoire libre en cours : on laisse finir
+  if (ctx.nightOffUntil && Date.now() < ctx.nightOffUntil) return false;
+  if (!isSleepTime(ctx.s)) return false;
+  await enterNight('soir', { quiet: true, startedAt: sleepStartedAt(ctx.s) });
+  return true;
+}
+
+// L'accueil se met à jour chaque minute (créneau en cours, bouton « Au dodo » qui clignote).
+let lastSlot = null;
+setInterval(async () => {
+  if (await clockTick()) return;
+  if (ctx.route === 'home') {
+    const id = ctx.s.clock.on ? currentSlot(ctx.s).cur.id : null;
+    if (id !== lastSlot) { lastSlot = id; if (id && ctx.s.clock.chime) chime(); }
+    render();
+  }
+}, 30000);
 
 // ---------- Démarrage ----------
 async function boot() {
@@ -95,6 +119,10 @@ async function boot() {
       return go(nightPhase() === 'wake' ? 'wake' : 'night');
     }
   }
+  ctx.nightOffUntil = (await kv.get('nightOffUntil')) || null;
+  ctx.route = 'home';
+  if (await clockTick()) return;
+  lastSlot = ctx.s.clock.on ? currentSlot(ctx.s).cur.id : null;
   go('home');
 }
 

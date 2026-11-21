@@ -1,17 +1,68 @@
 // Écrans de l'enfant : accueil, choix des histoires, lecture, moments, nuit, réveil.
 import { ctx, esc, go, render, startRitual, nextStep, momentInfo, nightPhase, endNight, toMin, keepAwake } from './ctx.js';
 import { ANIMALS, PALETTES, ICONS, MOMENTS } from './data.js';
-import { animalSVG, icon } from './animal.js';
+import { animalSVG, icon, moonSVG } from './animal.js';
 import { parentCorner } from './ui.js';
 import { allStories, playStory } from './narrator.js';
 import { stopAmbience } from './sound.js';
+import { currentSlot } from './clock.js';
 
 const pal = () => PALETTES[ctx.s.child.color] || PALETTES.corail;
 const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 
 // ---------- Accueil ----------
+function activityBadge(info, size = 120) {
+  return `<span class="act-badge" style="width:${size}px;height:${size}px;background:${info.dark ? '#2E3270' : '#fff'};color:${info.dark ? '#F5C451' : '#1F2250'}">${icon(ICONS[info.icon] || ICONS.clock, Math.round(size * 0.52))}</span>`;
+}
+
+// « Au dodo » n'apparaît que le soir (dès 1 h avant le rituel), pour éviter une nuit lancée à midi.
+function eveningNow(t) { const r = toMin(ctx.s.schedule.ritualStart); return t >= r - 60 || t < 4 * 60; }
+
+function clockHome() {
+  const s = ctx.s, c = s.child;
+  const { cur, next, today, progress } = currentSlot(s);
+  const info = cur.info;
+  const dark = !!info.dark;
+  const sc = s.schedule;
+  const napTime = cur.type === 'sieste';
+  const nowT = nowMin();
+  return `<div class="screen child home clockhome ${dark ? 'dark' : ''}" style="background:${info.bg}">
+    ${parentCorner(info.bg, dark ? '#F5C451' : '#E2B24C')}
+    <div class="ch-top"><h1 class="hello">Coucou ${esc(c.name)} !</h1></div>
+    <div class="ch-main">
+      <div class="ch-animal">
+        ${animalSVG(c.animal, { palette: c.color, size: 320, cls: info.asleep ? '' : 'bob', asleep: !!info.asleep, label: ANIMALS[c.animal].label })}
+        ${activityBadge(info)}
+      </div>
+      <div class="ch-side">
+        <span class="ch-say">${esc(info.say)}</span>
+        <div class="ch-next">
+          <span class="ch-next-ico">${icon(ICONS[next.info.icon] || ICONS.clock, 30)}</span>
+          <div class="grow"><span class="ch-next-label">Ensuite : ${esc(next.info.label)}</span>
+            <div class="ch-bar" aria-label="Temps avant le prochain moment"><span style="width:${Math.round(progress * 100)}%"></span></div></div>
+          <span class="ch-next-time">${next.time}</span>
+        </div>
+        <div class="ch-actions">
+          <button type="button" class="mid-btn light" data-act="free-stories">${icon(ICONS.histoire, 30)}Mes histoires</button>
+          ${napTime && sc.nap.on
+            ? `<button type="button" class="mid-btn nap pulse" data-act="start-ritual" data-v="sieste">${icon(ICONS.calme, 30)}La sieste</button>`
+            : (eveningNow(nowT) ? `<button type="button" class="mid-btn dark ${Math.abs(nowT - toMin(sc.ritualStart)) <= 30 ? 'pulse' : ''}" data-act="start-ritual" data-v="soir">${icon(ICONS.nuit, 30)}Au dodo !</button>` : '')}
+        </div>
+      </div>
+    </div>
+    <ol class="day-strip" aria-label="Ma journée">
+      ${today.map((sl) => {
+        const early = nowT < today[0].min;
+        const st = (sl === cur || (early && sl.type === 'dodo')) ? 'now' : (!early && sl.min < nowT ? 'past' : '');
+        return `<li class="ds ${st}" style="background:${sl.info.bg};${sl.info.dark ? 'color:#FBF6EE' : ''}">${icon(ICONS[sl.info.icon] || ICONS.clock, 24)}<span class="ds-t">${sl.time}</span></li>`;
+      }).join('')}
+    </ol>
+  </div>`;
+}
+
 ctx.screens.home = {
   render() {
+    if (ctx.s.clock && ctx.s.clock.on) return clockHome();
     const c = ctx.s.child, p = pal();
     const sc = ctx.s.schedule;
     const napTime = sc.nap.on && Math.abs(nowMin() - toMin(sc.nap.start)) <= 90;
@@ -204,6 +255,10 @@ ctx.actions['moment-next'] = () => { clearInterval(momentTimer); nextStep(); };
 
 // ---------- Nuit ----------
 let nightTimer = null, touchTimer = null;
+function nightProgress() {
+  const n = ctx.night; if (!n) return 0;
+  return Math.max(0, Math.min(1, (Date.now() - n.startedAt) / Math.max(1, n.wakeAt - n.startedAt)));
+}
 ctx.screens.night = {
   render() {
     const phase = nightPhase();
@@ -223,7 +278,13 @@ ctx.screens.night = {
       <div class="night-animal ${lvl ? 'visible' : ''}" id="night-animal" style="--lvl:${lvl ? lvl / 100 + 0.08 : 0}">
         <div class="night-glow" style="background:${tint}"></div>
         ${animalSVG(c.animal, { colors: { body: '#7A4A33', belly: '#8E6E5C' }, size: 260, asleep: true })}
-        <p class="night-text">Chut… ${esc(ANIMALS[c.animal].art)} dort encore</p>
+        <p class="night-text">C'est encore l'heure de dormir</p>
+        <p class="night-sub">Chut… ${esc(ANIMALS[c.animal].art)} dort encore. On reste dans son lit.</p>
+        <div class="night-track" aria-label="Le matin arrive bientôt">
+          ${moonSVG(26, '#000', '#6E5646')}
+          <span class="nt-bar"><span style="width:${Math.round(nightProgress() * 100)}%"></span></span>
+          ${icon(ICONS.sun, 28)}
+        </div>
       </div>
     </div>`;
   },

@@ -114,7 +114,7 @@ export function momentInfo(id) { return MOMENTS[id] || MOMENTS.calme; }
 
 // ---------- Nuit et sieste ----------
 
-function nextWake(s) {
+export function nextWake(s) {
   const now = new Date();
   const d = new Date(now);
   for (let i = 0; i < 2; i++) {
@@ -128,18 +128,23 @@ function nextWake(s) {
   return now.getTime() + 10 * 3600e3;
 }
 
-export async function enterNight(type) {
+export async function enterNight(type, opts = {}) {
   const s = ctx.s;
-  if (!ctx.ritual || !ctx.ritual.ambience) startAmbience(s.sound);
+  if (!opts.quiet && (!ctx.ritual || !ctx.ritual.ambience)) startAmbience(s.sound);
   const wakeAt = type === 'sieste' ? Date.now() + s.schedule.nap.dur * 60000 : nextWake(s);
-  ctx.night = { type, wakeAt, startedAt: Date.now() };
+  ctx.night = { type, wakeAt, startedAt: opts.startedAt || Date.now(), auto: !!opts.quiet };
   ctx.ritual = null;
   await kv.set('night', ctx.night);
   keepAwake();
   go('night');
 }
 
-export async function endNight(toHome = true) {
+// Quand un parent arrête la nuit à la main, l'horloge ne la relance pas avant le prochain réveil.
+export async function endNight(toHome = true, byParent = false) {
+  if (byParent && ctx.night) {
+    ctx.nightOffUntil = ctx.night.wakeAt;
+    await kv.set('nightOffUntil', ctx.nightOffUntil);
+  }
   ctx.night = null;
   stopAmbience(false, 2);
   await kv.del('night');
