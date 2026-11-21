@@ -1,5 +1,5 @@
 // Écrans de l'enfant : accueil, choix des histoires, lecture, moments, nuit, réveil.
-import { ctx, esc, go, render, startRitual, nextStep, momentInfo, nightPhase, endNight, toMin, keepAwake } from './ctx.js';
+import { ctx, esc, go, render, startRitual, nextStep, momentInfo, nightPhase, endNight, enterNight, toMin, keepAwake } from './ctx.js';
 import { ANIMALS, PALETTES, ICONS, MOMENTS, SOUNDS, momentAnimal, storyLength, DONE_SAY } from './data.js';
 import { animalSVG, icon, moonSVG, sceneFor } from './animal.js';
 import { parentCorner } from './ui.js';
@@ -243,7 +243,11 @@ ctx.screens.player = {
           ${next ? `<div class="next-up"><span class="muted-warm">Ensuite</span><strong>${esc(next.title)}</strong></div>` : ''}
           ${story.amb && story.kind !== 'import' && ctx.s.stories.ambience !== false ? `<button type="button" class="amb-btn ${bedPlaying() || !player ? 'on' : ''}" data-act="player-amb" aria-pressed="true">${icon(ICONS.sound, 24)}<span>Ambiance ${esc((SOUNDS[story.amb] || { label: 'forêt' }).label.toLowerCase())}</span></button>` : ''}
         </div>
-        <span class="muted-warm small">${ctx.ritual ? 'L’écran s’assombrit doucement, puis s’éteint après la dernière histoire.' : ''}</span>
+        <div class="player-skip">
+          <button type="button" class="hold-btn" data-holdact="skip">${icon(ICONS.next, 24)}<span>${next ? 'Histoire suivante' : 'Finir l’histoire'}</span><i class="hold-bar"></i></button>
+          <button type="button" class="hold-btn" data-holdact="sleep">${icon(ICONS.nuit, 24)}<span>Dormir maintenant</span><i class="hold-bar"></i></button>
+        </div>
+        <span class="muted-warm small">Pour les grands : gardez le doigt appuyé sur un bouton. ${ctx.ritual ? 'Après la dernière histoire, la nuit commence toute seule.' : ''}</span>
       </div>
     </div>`;
   },
@@ -285,6 +289,25 @@ export function toggleStoryAmbience() {
   if (curPlay && curPlay.story && curPlay.story.amb) { startBed(curPlay.story.amb, ctx.s.sound.cap); return true; }
   return false;
 }
+/** Arrêter les histoires et passer directement à la nuit (ou à la sieste). */
+export function sleepNow() {
+  if (player) player.stop();
+  player = null;
+  if (ctx.ritual) { ctx.ritual.idx = ctx.ritual.steps.length - 2; return nextStep(); }
+  const { cur } = currentSlot(ctx.s);
+  enterNight(cur.type === 'sieste' && ctx.s.schedule.nap.on ? 'sieste' : 'soir');
+}
+// Boutons « à garder appuyé » (1,5 s) : visibles pour les parents, difficiles à déclencher par hasard.
+let holdT = null;
+document.addEventListener('pointerdown', (e) => {
+  const b = e.target.closest && e.target.closest('[data-holdact]');
+  if (!b) return;
+  e.preventDefault();
+  b.classList.add('holding');
+  clearTimeout(holdT);
+  holdT = setTimeout(() => { b.classList.remove('holding'); if (b.dataset.holdact === 'skip') skipStory(); else sleepNow(); }, 1500);
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach((t) => document.addEventListener(t, () => { clearTimeout(holdT); document.querySelectorAll('.hold-btn.holding').forEach((x) => x.classList.remove('holding')); }, true));
 ctx.actions['player-amb'] = (b) => { const on = toggleStoryAmbience(); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); };
 ctx.actions['player-toggle'] = (b) => {
   if (!player) return;

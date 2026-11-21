@@ -667,3 +667,10 @@ select.input { padding: 0 12px; }
   .brush-main { flex-direction: column; gap: 24px; }
 }
 @media (max-width: 900px) { .pmain { overflow: visible; } }
+.player-skip { display: flex; gap: 12px; flex-wrap: wrap; }
+.hold-btn { position: relative; overflow: hidden; min-height: 56px; border-radius: 999px; border: 2px solid #4A3F66; background: #2E2850; color: #F3E6D8; display: inline-flex; align-items: center; gap: 10px; padding: 0 20px; font-weight: 800; font-size: 16px; touch-action: none; -webkit-user-select: none; user-select: none; }
+.hold-btn svg { color: #D9A93F; position: relative; }
+.hold-btn span { position: relative; }
+.hold-btn .hold-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(217,169,63,.35); }
+.hold-btn.holding .hold-bar { animation: holdfill 1.5s linear forwards; }
+@media (orientation: portrait) { .player-skip { justify-content: center; } }

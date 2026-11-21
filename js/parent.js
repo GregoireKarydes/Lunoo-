@@ -6,7 +6,7 @@ import { animalSVG, icon } from './animal.js';
 import { REWARDABLE, dayKey } from './rewards.js';
 import { parentLayout, toggle, chips, stepper, toast, ask, confirmBox } from './ui.js';
 import { hoursBody } from './onboarding.js';
-import { skipStory, toggleStoryAmbience } from './child.js';
+import { skipStory, toggleStoryAmbience, sleepNow } from './child.js';
 import { bedPlaying } from './sound.js';
 import { allStories, impKey, recKey } from './narrator.js';
 import { audio, exportBackup, importBackup } from './store.js';
@@ -62,6 +62,7 @@ export function openParent() {
   const acts = [];
   if (ctx.route === 'player') {
     acts.push(['qs-skip', ICONS.next, 'Histoire suivante']);
+    if (!ctx.ritual) acts.push(['qs-sleep', ICONS.nuit, 'Dormir maintenant']);
     acts.push(['qs-amb', ICONS.sound, bedPlaying() ? 'Couper l’ambiance (pluie, vagues…)' : 'Remettre l’ambiance']);
   }
   if (ctx.ritual) acts.push(['qs-ritual', ctx.route === 'player' ? ICONS.nuit : ICONS.next, ctx.route === 'player' ? 'Arrêter les histoires, passer à la nuit' : 'Étape suivante du rituel']);
@@ -86,7 +87,8 @@ export function openParent() {
     clearTimeout(t); el.remove();
     const a = b ? b.dataset.qs : 'qs-close';
     if (a === 'qs-next') { setOverride(ctx.s, b.dataset.v); save(); go('home'); }
-    else if (a === 'qs-ritual') { if (ctx.route === 'player') { ctx.ritual.idx = ctx.ritual.steps.length - 2; } nextStep(); }
+    else if (a === 'qs-ritual') { if (ctx.route === 'player') sleepNow(); else nextStep(); }
+    else if (a === 'qs-sleep') sleepNow();
     else if (a === 'qs-skip') skipStory();
     else if (a === 'qs-amb') { const on = toggleStoryAmbience(); const ab = document.querySelector('.amb-btn'); if (ab) { ab.classList.toggle('on', on); ab.setAttribute('aria-pressed', String(on)); } }
     else if (a === 'qs-night') { if (ctx.s.access.pin) enterParentSpace(); else go('p-launch', { type: sleepTypeNow(ctx.s) }); }
