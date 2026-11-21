@@ -219,9 +219,11 @@ export function ambiencePlaying() { return !!amb; }
 
 // ---------- Ambiance d'une histoire (sous la voix) ----------
 let bed = null;
+let bedMuted = false; // coupée par un parent : reste coupée pour les histoires suivantes de la soirée
+export function setBedMuted(v) { bedMuted = !!v; }
 export function startBed(type, cap = 40) {
   stopBed(0);
-  if (!type) return;
+  if (!type || bedMuted) return;
   const ac = audioContext();
   bed = channel(ac, Math.min(cap, 40) / 100 * 0.35);
   build(type, ac, bed);

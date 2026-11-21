@@ -6,6 +6,8 @@ import { animalSVG, icon } from './animal.js';
 import { REWARDABLE, dayKey } from './rewards.js';
 import { parentLayout, toggle, chips, stepper, toast, ask, confirmBox } from './ui.js';
 import { hoursBody } from './onboarding.js';
+import { skipStory, toggleStoryAmbience } from './child.js';
+import { bedPlaying } from './sound.js';
 import { allStories, impKey, recKey } from './narrator.js';
 import { audio, exportBackup, importBackup } from './store.js';
 import { startAmbience, stopAmbience, ambiencePlaying, setAmbienceVolume } from './sound.js';
@@ -58,7 +60,11 @@ export function openParent() {
   if (!child) return enterParentSpace();
   document.querySelectorAll('.quick-sheet').forEach((x) => x.remove());
   const acts = [];
-  if (ctx.ritual) acts.push(['qs-ritual', ICONS.next, 'Étape suivante du rituel']);
+  if (ctx.route === 'player') {
+    acts.push(['qs-skip', ICONS.next, 'Histoire suivante']);
+    acts.push(['qs-amb', ICONS.sound, bedPlaying() ? 'Couper l’ambiance (pluie, vagues…)' : 'Remettre l’ambiance']);
+  }
+  if (ctx.ritual) acts.push(['qs-ritual', ctx.route === 'player' ? ICONS.nuit : ICONS.next, ctx.route === 'player' ? 'Arrêter les histoires, passer à la nuit' : 'Étape suivante du rituel']);
   else if (!ctx.night && ctx.s.clock.on) {
     const { next } = currentSlot(ctx.s);
     acts.push(['qs-next', ICONS.next, `Passer à « ${esc(next.info.label)} »`, next.id]);
@@ -80,7 +86,9 @@ export function openParent() {
     clearTimeout(t); el.remove();
     const a = b ? b.dataset.qs : 'qs-close';
     if (a === 'qs-next') { setOverride(ctx.s, b.dataset.v); save(); go('home'); }
-    else if (a === 'qs-ritual') nextStep();
+    else if (a === 'qs-ritual') { if (ctx.route === 'player') { ctx.ritual.idx = ctx.ritual.steps.length - 2; } nextStep(); }
+    else if (a === 'qs-skip') skipStory();
+    else if (a === 'qs-amb') { const on = toggleStoryAmbience(); const ab = document.querySelector('.amb-btn'); if (ab) { ab.classList.toggle('on', on); ab.setAttribute('aria-pressed', String(on)); } }
     else if (a === 'qs-night') { if (ctx.s.access.pin) enterParentSpace(); else go('p-launch', { type: sleepTypeNow(ctx.s) }); }
     else if (a === 'qs-parent') enterParentSpace();
   });
@@ -148,6 +156,7 @@ ctx.screens['p-launch'] = {
     const total = sel.reduce((n, id) => n + ((stories.find((x) => x.id === id) || {}).minutes || 0), 0);
     const wake = type === 'sieste' ? `réveil dans ${fmtDur(s.schedule.nap.dur)}` : `réveil à ${s.schedule.wakeWeek} (${s.schedule.wakeWeekend} le week-end)`;
     const summary = launch.mode === 'child' ? `${childName()} choisit ${type === 'sieste' ? s.stories.napChoose : s.stories.choose} histoire(s) sur la tablette, puis ${type === 'sieste' ? 'la sieste' : 'la nuit'} commence`
+      : launch.mode === 'pick' && !sel.length ? 'Touchez les histoires dans l’ordre (ou lancez sans histoire)'
       : (launch.mode === 'none' || !sel.length) ? `${type === 'sieste' ? 'La sieste' : 'La nuit'} commence tout de suite`
       : `${sel.length} histoire${sel.length > 1 ? 's' : ''} · environ ${total} min, puis ${type === 'sieste' ? 'la sieste' : 'la nuit'}`;
     const body = `
@@ -276,7 +285,7 @@ ctx.screens['p-stories'] = {
             <span class="story-title sm">${esc(st.title)}</span>
             ${st.minutes ? `<span class="muted small">${storyLength(st.minutes).label} · environ ${st.minutes} min${st.amb ? ' · ambiance ' + (SOUNDS[st.amb] ? SOUNDS[st.amb].label.toLowerCase() : 'forêt') : ''}</span>` : ''}
             <div class="pstory-foot">
-              <span class="tag ${st.recorded ? 'fam' : ''}">${st.kind === 'import' ? 'Fichier importé' : (st.recorded ? 'Voix : ' + esc(st.voice) : 'Voix de la tablette')}</span>
+              ${st.recorded || st.kind === 'import' ? `<span class="tag fam">${st.kind === 'import' ? 'Fichier importé' : 'Voix : ' + esc(st.voice)}</span>` : '<span></span>'}
               ${pl ? `<button type="button" class="icon-btn ${pl.storyIds.includes(st.id) ? 'in' : ''}" data-act="pl-toggle" data-v="${st.id}" aria-label="${pl.storyIds.includes(st.id) ? 'Retirer de' : 'Ajouter à'} la playlist">${icon(pl.storyIds.includes(st.id) ? ICONS.check : ICONS.plus, 20)}</button>` : ''}
             </div>
             <div class="pstory-actions">
@@ -479,7 +488,7 @@ ctx.screens['p-access'] = {
     const corners = [['hg', 'en haut à gauche'], ['hd', 'en haut à droite'], ['bg', 'en bas à gauche'], ['bd', 'en bas à droite']];
     const body = `<div class="grid2">
       <div class="card">
-        <strong>Pour entrer : appui long dans un coin</strong>
+        <strong>Le geste des grands : appui long sur la lune</strong><span class="muted small">Depuis l’écran de l’enfant, il ouvre « Pour les grands » : passer au moment suivant, histoire suivante, lancer la nuit, espace parent.</span>
         <div class="corner-pick">${corners.map(([id, l]) => `<button type="button" class="cp corner-${id} ${a.corner === id ? 'sel' : ''}" aria-pressed="${a.corner === id}" aria-label="Coin ${l}" data-act="a-corner" data-v="${id}"></button>`).join('')}</div>
         <span class="label">Durée de l'appui</span>
         ${chips('a-hold', [[2, '2 s'], [3, '3 s'], [5, '5 s']], a.hold)}
@@ -506,7 +515,7 @@ ctx.screens['p-access'] = {
         <button type="button" class="btn ghost-dark" data-act="a-import">${icon(ICONS.upload, 20)}Importer</button>
         <input type="file" id="import-backup" accept="application/json,.json" hidden>
       </div>
-      <div class="span2 muted small">Lunoo V1 · toutes les données restent sur l'appareil · <button type="button" class="link-btn small" data-act="a-reset">Tout effacer</button></div>
+      <div class="span2 muted small">Lunoo 1.6 · toutes les données restent sur l'appareil · <button type="button" class="link-btn small" data-act="a-reset">Tout effacer</button></div>
     </div>`;
     return parentLayout('p-access', 'Code et sauvegarde', body);
   },
@@ -585,14 +594,7 @@ ctx.screens['p-clock'] = {
     }).join('');
     const hasDodo = ck.slots.some((x) => x.type === 'dodo');
     const body = `
-      <div class="card list">
-        ${toggle('clock.on', ck.on, 'Horloge de la journée', `L’écran de ${childName()} montre le moment en cours : image, couleur et message changent tout seuls`)}
-        ${toggle('clock.chime', ck.chime, 'Petit carillon à chaque changement', 'Un son très doux quand on passe au moment suivant')}
-        ${toggle('clock.voice', ck.voice !== false, 'Annoncer chaque moment à voix haute', `« ${childName()}, c’est l’heure de manger ! » (jamais pendant le dodo ou la sieste). En touchant l’animal, ${childName()} réentend le message.`)}
-        ${toggle('rewards.on', s.rewards.on, 'Bouton « C’est fait ! »', `${childName()} touche le bouton quand il a fini (s’habiller, manger, les dents…) : confettis et bravo à voix haute`)}
-        ${s.rewards.on ? toggle('rewards.adult', s.rewards.adult, 'Vérifié par un adulte', 'Avant la fête, un adulte regarde puis garde le doigt appuyé 2 secondes') : ''}
-      </div>
-      ${s.rewards.on ? rewardsToday(s) : ''}
+      ${ck.on ? '' : '<div class="warn-box">L’horloge est désactivée : l’écran de l’enfant affiche seulement son animal. Activez-la dans les options ci-dessous.</div>'}
       ${ck.on ? `
       <div class="split">
         <div class="col">
@@ -607,8 +609,17 @@ ctx.screens['p-clock'] = {
             ? `<span class="muted small">Pendant « Dodo », l'écran passe tout seul en mode nuit jusqu'au réveil (${sc.wakeWeek} en semaine, ${sc.wakeWeekend} le week-end). Si ${childName()} se lève avant, il voit que c'est encore l'heure de dormir.</span>`
             : '<div class="warn-box small">Ajoutez un moment « Dodo » pour que l’écran passe tout seul en mode nuit.</div>'}
         </div>
-      </div>` : ''}`;
-    return parentLayout('p-clock', 'Horloge de la journée', body);
+      </div>` : ''}
+      <span class="label">Options de l’écran</span>
+      <div class="card list">
+        ${toggle('clock.on', ck.on, 'Horloge de la journée', `L’écran de ${childName()} montre le moment en cours : image, couleur et message changent tout seuls`)}
+        ${toggle('clock.chime', ck.chime, 'Petit carillon à chaque changement', 'Un son très doux quand on passe au moment suivant')}
+        ${toggle('clock.voice', ck.voice !== false, 'Annoncer chaque moment à voix haute', `« ${childName()}, c’est l’heure de manger ! » (jamais pendant le dodo ou la sieste). En touchant l’animal, ${childName()} réentend le message.`)}
+        ${toggle('rewards.on', s.rewards.on, 'Bouton « C’est fait ! »', `${childName()} touche le bouton quand il a fini (s’habiller, manger, les dents…) : confettis et bravo à voix haute`)}
+        ${s.rewards.on ? toggle('rewards.adult', s.rewards.adult, 'Vérifié par un adulte', 'Avant la fête, un adulte regarde puis garde le doigt appuyé 2 secondes') : ''}
+      </div>
+      ${s.rewards.on ? rewardsToday(s) : ''}`;
+    return parentLayout('p-clock', 'La journée', body);
   },
 };
 ctx.actions['ck-time'] = (b) => {

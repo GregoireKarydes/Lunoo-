@@ -53,7 +53,7 @@ export function parentLayout(active, title, body) {
       <button type="button" class="pnav-exit" data-act="exit-parent">${icon(ICONS.back, 20)}<span>Retour à l’écran de ${name}</span></button>
     </nav>
     <main class="pmain">
-      <h1 class="ptitle">${title}</h1>
+      <h1 class="ptitle">${tabs.length > 1 ? g.label : title}</h1>
       ${tabs.length > 1 ? `<div class="seg subnav">${tabs.map(([r, l]) => `<button type="button" class="${r === active ? 'sel' : ''}" data-go="${r}">${l}</button>`).join('')}</div>` : ''}
       ${body}
     </main>

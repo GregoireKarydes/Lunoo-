@@ -82,3 +82,8 @@ Polices : Fredoka et Nunito, licence SIL Open Font License (voir `fonts/`).
 - **Écran toujours allumé** : Wake Lock, ou vidéo muette en boucle si le navigateur le refuse (`assets/awake.mp4`).
 - **Animations** dans l'espace parent : tous les moments et écrans spéciaux, en vignettes et en plein écran.
 - **16 histoires** de 1 à 10 minutes, durée affichée avec 1 à 3 lunes, et une ambiance sonore générée sous la voix (pluie, vagues, grillons, vent, ruisseau, feu de bois, forêt, boîte à musique).
+
+## Version 1.6
+
+- **Pendant les histoires** (appui long sur la lune) : histoire suivante, couper ou remettre l'ambiance (la coupure vaut pour la soirée), arrêter les histoires et passer à la nuit. Bouton « Ambiance » aussi sur l'écran de lecture.
+- **Audit UX** : bouton « C'est parti » toujours visible au choix des histoires, onglets simplifiés pour l'enfant, barre de temps sur les étapes du rituel, frise sur une ligne, mise en page portrait (accueil, lecture), titres de l'espace parent cohérents, réglages de la journée dans un ordre logique (horaires d'abord), étiquettes de voix seulement pour les voix de la famille.

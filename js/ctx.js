@@ -1,6 +1,6 @@
 // État partagé de l'appli, navigation, moteur du rituel et de la nuit.
 import { kv, saveSettings } from './store.js';
-import { startAmbience, stopAmbience } from './sound.js';
+import { startAmbience, stopAmbience, setBedMuted } from './sound.js';
 import { MOMENTS } from './data.js';
 
 export const ctx = {
@@ -121,6 +121,7 @@ export async function launchNight(type, ids = [], childPicks = false) {
   if (ctx.night) { ctx.night = null; await kv.del('night'); } // une nuit lancée toute seule par l'horloge
   if (ctx.s.clock && ctx.s.clock.override) { delete ctx.s.clock.override; save(); }
   ctx.nightOffUntil = null; await kv.del('nightOffUntil');
+  setBedMuted(false);
   ctx.ritual = { type, steps: [{ id: 'histoire', on: true, dur: 0 }, { id: 'nuit', on: true, dur: 0 }], idx: 0, chosen: [], ambience: true };
   keepAwake();
   startAmbience(ctx.s.sound);

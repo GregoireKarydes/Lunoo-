@@ -1,10 +1,10 @@
 // Écrans de l'enfant : accueil, choix des histoires, lecture, moments, nuit, réveil.
 import { ctx, esc, go, render, startRitual, nextStep, momentInfo, nightPhase, endNight, toMin, keepAwake } from './ctx.js';
-import { ANIMALS, PALETTES, ICONS, MOMENTS, momentAnimal, storyLength, DONE_SAY } from './data.js';
+import { ANIMALS, PALETTES, ICONS, MOMENTS, SOUNDS, momentAnimal, storyLength, DONE_SAY } from './data.js';
 import { animalSVG, icon, moonSVG, sceneFor } from './animal.js';
 import { parentCorner } from './ui.js';
 import { allStories, playStory } from './narrator.js';
-import { stopAmbience } from './sound.js';
+import { stopAmbience, startBed, stopBed, bedPlaying, setBedMuted } from './sound.js';
 import { currentSlot } from './clock.js';
 import { REWARDABLE, buttonLabel, doneToday, dayKey, speak } from './rewards.js';
 
@@ -138,7 +138,7 @@ ctx.screens.home = {
 };
 ctx.actions.say = (b) => speak(b.dataset.v);
 ctx.actions['start-ritual'] = (b) => startRitual(b.dataset.v);
-ctx.actions['free-stories'] = () => { ctx.ritual = null; ctx.free = { chosen: [] }; go('pick', { max: 3, free: true }); };
+ctx.actions['free-stories'] = () => { setBedMuted(false); ctx.ritual = null; ctx.free = { chosen: [] }; go('pick', { max: 3, free: true }); };
 
 // ---------- Choix des histoires ----------
 // La longueur se lit sans savoir lire : 1, 2 ou 3 petites lunes.
@@ -171,7 +171,7 @@ ctx.screens.pick = {
         <div class="slots" aria-label="${count} sur ${max}">${Array.from({ length: max }, (_, i) => `<span class="${i < count ? 'on' : ''}" style="${i < count ? `background:${pal().body}` : ''}"></span>`).join('')}<strong>${count} sur ${max}</strong></div>
       </div>
       <div class="tabs">
-        ${[['toutes', 'Toutes'], ['courte', moons(1) + ' Petites'], ['moyenne', moons(2) + ' Moyennes'], ['longue', moons(3) + ' Longues'], ['famille', 'Voix de la famille'], ['playlists', 'Playlists']].map(([id, l]) => `<button type="button" class="tab ${tab === id ? 'sel' : ''}" aria-pressed="${tab === id}" data-act="pick-tab" data-v="${id}">${l}</button>`).join('')}
+        ${[['toutes', 'Toutes'], ['courte', moons(1) + ' Petites'], ['moyenne', moons(2) + ' Moyennes'], ['longue', moons(3) + ' Longues'], ...(family.length ? [['famille', 'Voix de la famille']] : [])].map(([id, l]) => `<button type="button" class="tab ${tab === id ? 'sel' : ''}" aria-pressed="${tab === id}" data-act="pick-tab" data-v="${id}">${l}</button>`).join('')}
       </div>
       <div class="story-grid">
         ${items.length ? items.map((s) => {
@@ -180,7 +180,7 @@ ctx.screens.pick = {
           return `<button type="button" class="story-card ${idx >= 0 ? 'sel' : ''}" style="${idx >= 0 ? `border-color:${pal().body}` : ''}" aria-pressed="${idx >= 0}" data-act="pick-story" data-v="${esc(s.id)}" data-max="${max}">
             <span class="thumb" style="background:${s.bg}">${animalSVG(a, { size: 116 })}
               ${idx >= 0 ? `<span class="order" style="background:${pal().body}">${isPl ? icon(ICONS.check, 22) : idx + 1}</span>` : ''}
-              <span class="voice-tag">${icon(ICONS.mic, 14)}${esc(s.voice)}</span>
+              ${s.recorded ? `<span class="voice-tag">${icon(ICONS.mic, 14)}${esc(s.voice)}</span>` : ''}
               ${s.minutes ? `<span class="len-tag len-${storyLength(s.minutes).id}" aria-label="Environ ${s.minutes} minutes">${moons(lenLevel(s.minutes))}<b>${s.minutes} min</b></span>` : ''}</span>
             <span class="story-title">${esc(s.title)}</span>
           </button>`;
@@ -240,6 +240,7 @@ ctx.screens.player = {
         <div class="player-ctl">
           <button type="button" class="play-btn" data-act="player-toggle" aria-label="Pause" id="play-btn">${icon(ICONS.pause, 46, 'fill="#221A30" stroke="none"')}</button>
           ${next ? `<div class="next-up"><span class="muted-warm">Ensuite</span><strong>${esc(next.title)}</strong></div>` : ''}
+          ${story.amb && story.kind !== 'import' && ctx.s.stories.ambience !== false ? `<button type="button" class="amb-btn ${bedPlaying() || !player ? 'on' : ''}" data-act="player-amb" aria-pressed="true">${icon(ICONS.sound, 24)}<span>Ambiance ${esc((SOUNDS[story.amb] || { label: 'forêt' }).label.toLowerCase())}</span></button>` : ''}
         </div>
         <span class="muted-warm small">${ctx.ritual ? 'L’écran s’assombrit doucement, puis s’éteint après la dernière histoire.' : ''}</span>
       </div>
@@ -248,22 +249,42 @@ ctx.screens.player = {
   mount(el, p) {
     const chosen = (ctx.ritual ? ctx.ritual.chosen : (ctx.free && ctx.free.chosen)) || [];
     const story = allStories(ctx.s).find((s) => s.id === chosen[p.i]);
+    curPlay = { story, i: p.i, chosen };
     if (!story) { if (ctx.ritual) nextStep(); else go('home'); return; }
     const prog = el.querySelector('#prog');
     let base = 0, span = 1;
     playStory(story, ctx.s, {
       onProgress: (f, page, total) => { base = f; span = total ? 1 / total : 0; prog.style.width = (f * 100) + '%'; },
       onTime: (t) => { prog.style.width = ((base + t * span) * 100) + '%'; },
-      onEnd: () => {
-        if (p.i + 1 < chosen.length) go('player', { i: p.i + 1 });
-        else if (ctx.ritual) nextStep();
-        else go('home');
-      },
+      onEnd: () => afterStory(p.i, chosen),
     }).then((ctl) => { player = ctl; });
     if (ctx.ritual) el.querySelector('.player').classList.add('fading');
   },
-  unmount() { if (player) player.stop(); player = null; },
+  unmount() { if (player) player.stop(); player = null; curPlay = null; },
 };
+// Après une histoire (finie ou passée) : la suivante, sinon la suite du rituel (la nuit), sinon l'accueil.
+function afterStory(i, chosen) {
+  if (i + 1 < chosen.length) go('player', { i: i + 1 });
+  else if (ctx.ritual) nextStep();
+  else go('home');
+}
+let curPlay = null;
+/** Passer à l'histoire suivante (panneau « Pour les grands »). */
+export function skipStory() {
+  if (!curPlay) return;
+  const { i, chosen } = curPlay;
+  if (player) player.stop();
+  player = null;
+  afterStory(i, chosen);
+}
+/** Couper ou remettre l'ambiance de l'histoire en cours. Renvoie true si elle joue. */
+export function toggleStoryAmbience() {
+  if (bedPlaying()) { stopBed(1); setBedMuted(true); return false; }
+  setBedMuted(false);
+  if (curPlay && curPlay.story && curPlay.story.amb) { startBed(curPlay.story.amb, ctx.s.sound.cap); return true; }
+  return false;
+}
+ctx.actions['player-amb'] = (b) => { const on = toggleStoryAmbience(); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); };
 ctx.actions['player-toggle'] = (b) => {
   if (!player) return;
   if (player.paused) { player.resume(); b.innerHTML = icon(ICONS.pause, 46, 'fill="#221A30" stroke="none"'); b.setAttribute('aria-label', 'Pause'); }
@@ -281,6 +302,7 @@ ctx.screens.moment = {
       <span class="moment-step">${r ? `Étape ${r.idx + 1} sur ${r.steps.length}` : ''}</span>
       <div class="moment-animal">${sceneBlock(p.id, false, 320)}</div>
       <h1>${m.text}</h1>
+      <div class="moment-bar" aria-hidden="true"><span id="mbar"></span></div>
       <div class="moment-time" id="mtime">${p.dur} min</div>
     </div>`;
   },
@@ -292,6 +314,7 @@ ctx.screens.moment = {
       const left = Math.max(0, end - Date.now());
       const min = Math.ceil(left / 60000);
       t.textContent = left > 60000 ? `${min} min` : 'Presque fini…';
+      const mb = el.querySelector('#mbar'); if (mb) mb.style.width = (100 * left / (p.dur * 60000)) + '%';
       if (left <= 0) { clearInterval(momentTimer); nextStep(); }
     }, 1000);
   },

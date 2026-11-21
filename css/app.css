@@ -635,3 +635,35 @@ select.input { padding: 0 12px; }
 .qs-btn.ghost { background: #fff; color: var(--ink); border: 2px solid var(--line); font-size: 19px; }
 .qs-btn.ghost svg { color: var(--muted); }
 .ch-say small { display: block; font-family: var(--body); font-weight: 800; font-size: 22px; opacity: .7; margin-top: 8px; }
+.amb-btn { min-height: 56px; border-radius: 999px; border: 2px solid #4A3F66; background: transparent; color: #8E7FA8; display: inline-flex; align-items: center; gap: 10px; padding: 0 18px; font-weight: 800; font-size: 15px; }
+.amb-btn.on { background: #3A3150; color: #F3E6D8; border-color: #D9A93F; }
+
+/* ---------- Corrections de l'audit UX ---------- */
+/* Choix des histoires : le bouton « C'est parti » reste toujours visible */
+.screen.pick { height: 100dvh; min-height: 0; }
+.pick .story-grid { min-height: 0; }
+.pick-foot { padding-top: 4px; }
+/* Moment du rituel : une barre qui se vide montre le temps qui reste */
+.moment-bar { width: min(420px, 70vw); height: 16px; border-radius: 8px; background: rgba(255,255,255,.6); overflow: hidden; }
+.moment-bar span { display: block; height: 100%; width: 100%; background: var(--navy); border-radius: 8px; transition: width 1s linear; }
+.moment.dark .moment-bar span { background: var(--moon); }
+/* Frise de la journée : une seule ligne */
+.day-strip { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 14px 6px 6px; }
+.day-strip::-webkit-scrollbar { display: none; }
+.ds { flex: none; }
+/* Tablette en portrait */
+@media (orientation: portrait) {
+  .clockhome { padding: 24px 24px 20px; }
+  .ch-main { flex-direction: column; gap: 28px; }
+  .ch-animal .animal { width: min(300px, 46vh, 70vw); }
+  .ch-side { align-items: center; text-align: center; }
+  .ch-sayrow { justify-content: center; }
+  .done-btn, .done-chip { align-self: center; }
+  .ds { min-width: 50px; padding: 8px; }
+  .player { flex-direction: column; justify-content: center; text-align: center; gap: 28px; padding: 40px 32px; }
+  .player-info { align-items: center; flex: 0 0 auto; width: min(560px, 100%); }
+  .player-info .bar { width: 100%; }
+  .player-ctl { justify-content: center; }
+  .brush-main { flex-direction: column; gap: 24px; }
+}
+@media (max-width: 900px) { .pmain { overflow: visible; } }

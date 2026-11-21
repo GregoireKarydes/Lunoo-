@@ -26,7 +26,7 @@ ctx.screens['onb-welcome'] = {
     </div>`;
     return `<div class="screen onb onb-welcome">
       <div class="brand-big">${moonSVG(64)}<span>lunoo</span></div>
-      <h1>Préparons le rituel du soir de votre enfant</h1>
+      <h1>La journée et le dodo de votre enfant, en images</h1>
       <div class="animal-row">${['coq', 'ours', 'canard', 'castor', 'mouton', 'hibou'].map((a) => `<span class="animal-tile">${animalSVG(a, { size: 84, label: ANIMALS[a].label })}</span>`).join('')}</div>
       <p class="lead muted-light">Un animal pour chaque moment : le coq au réveil, le canard au bain, le hibou pour dormir…</p>
       ${install}
@@ -121,9 +121,9 @@ export function hoursBody() {
     <div class="card center ${sc.nap.on ? 'nap-on' : ''}">
       <div class="card-head"><span class="card-title">Sieste</span>
         <button type="button" class="switch ${sc.nap.on ? 'on' : ''}" role="switch" aria-checked="${sc.nap.on}" aria-label="Sieste" data-act="nap-toggle"><span></span></button></div>
-      ${sc.nap.on ? `<span class="time-mid">${sc.nap.start}</span>
+      ${sc.nap.on ? `<span class="muted small">Début</span><span class="time-mid">${sc.nap.start}</span>
         <div class="pair"><button type="button" class="round sm" data-act="time" data-k="nap.start" data-d="-15" aria-label="Sieste plus tôt">−</button><button type="button" class="round sm" data-act="time" data-k="nap.start" data-d="15" aria-label="Sieste plus tard">+</button></div>
-        <span class="muted">Durée : ${fmtDur(sc.nap.dur)}</span>
+        <span class="muted small">Durée</span><span class="time-mid">${fmtDur(sc.nap.dur)}</span>
         <div class="pair"><button type="button" class="round sm" data-act="nap-dur" data-d="-15" aria-label="Sieste plus courte">−</button><button type="button" class="round sm" data-act="nap-dur" data-d="15" aria-label="Sieste plus longue">+</button></div>`
         : '<span class="muted pad">Pas de sieste. Vous pourrez l’ajouter à tout moment.</span>'}
     </div>
