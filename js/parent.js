@@ -101,6 +101,29 @@ ctx.actions['exit-parent'] = () => {
   else go('home');
 };
 
+// ---------- Premiers pas : un guide en 3 étapes, jusqu'à ce que tout soit fait ----------
+function guideCard(s) {
+  const g = s.guide || {};
+  const story = g.story || Object.keys(s.recordings || {}).length > 0 || (s.customStories || []).length > 0;
+  const items = [
+    ['clock', g.clock, 'Réglez sa journée', 'Heure du réveil, des repas, du dodo…', 'p-clock', ''],
+    ['story', story, 'Enregistrez une histoire avec votre voix', 'Facultatif : des histoires sont déjà prêtes', 'p-stories', ''],
+    ['night', g.night, 'Lancez la première nuit', 'Ce soir, au moment du coucher', 'p-launch', `data-p='{"type":"soir"}'`],
+  ];
+  if (g.hidden || items.every((x) => x[1])) return '';
+  const next = items.find((x) => !x[1]);
+  return `<div class="guide">
+    <div class="guide-head"><strong>Premiers pas</strong><span class="muted small">${items.filter((x) => x[1]).length} / 3</span>
+      <button type="button" class="link-btn small" data-act="guide-hide">Masquer</button></div>
+    ${items.map(([id, done, t, d, route, p], i) => `<button type="button" class="guide-item ${done ? 'done' : ''} ${next && next[0] === id ? 'next' : ''}" data-go="${route}" ${p}>
+      <span class="guide-n">${done ? icon(ICONS.check, 20) : i + 1}</span>
+      <span class="guide-t"><strong>${t}</strong><span>${d}</span></span>
+      ${!done ? icon(ICONS.next, 22) : ''}</button>`).join('')}
+  </div>`;
+}
+ctx.actions['guide-hide'] = () => { ctx.s.guide = { ...(ctx.s.guide || {}), hidden: true }; save(); render(); };
+function guideDone(k) { const g = ctx.s.guide || (ctx.s.guide = {}); if (!g[k]) { g[k] = true; save(); } }
+
 // ---------- Accueil parent : seulement les actions du quotidien ----------
 const sleepTypeNow = (s) => { const { cur } = currentSlot(s); return cur.type === 'sieste' && s.schedule.nap.on ? 'sieste' : 'soir'; };
 ctx.screens['p-home'] = {
@@ -125,7 +148,7 @@ ctx.screens['p-home'] = {
       const type = sleepTypeNow(s);
       const clock = s.clock.on ? currentSlot(s) : null;
       const stars = Object.keys((s.rewards && s.rewards.done[dayKey()]) || {}).length;
-      main = `<button type="button" class="home-big" data-go="p-launch" data-p='{"type":"${type}"}'>${icon(ICONS.nuit, 46)}<span><strong>${type === 'sieste' ? 'Lancer la sieste' : 'Lancer la nuit'}</strong><span>Choisir les histoires, puis ${type === 'sieste' ? 'la sieste' : 'la nuit'} commence toute seule</span></span></button>
+      main = `${guideCard(s)}<button type="button" class="home-big" data-go="p-launch" data-p='{"type":"${type}"}'>${icon(ICONS.nuit, 46)}<span><strong>${type === 'sieste' ? 'Lancer la sieste' : 'Lancer la nuit'}</strong><span>Choisir les histoires, puis ${type === 'sieste' ? 'la sieste' : 'la nuit'} commence toute seule</span></span></button>
         <div class="home-actions-grid">
           ${clock ? `<button type="button" class="home-act" data-act="ov-next" data-v="${esc(clock.next.id)}">${icon(ICONS.next, 34)}<strong>Passer à « ${esc(clock.next.info.label)} »</strong></button>` : ''}
           <button type="button" class="home-act" data-act="free-stories">${icon(ICONS.histoire, 34)}<strong>Lancer des histoires</strong></button>
@@ -241,13 +264,11 @@ ctx.screens['p-child'] = {
       <div class="col">
         <div class="field-row">
           <div class="field grow2"><label for="pc-name">Prénom</label><input id="pc-name" class="input" type="text" value="${esc(c.name)}" maxlength="20" data-change="child-name"></div>
-          <div class="field"><label for="pc-age">Âge</label><select id="pc-age" class="input" data-change="child-age">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((a) => `<option value="${a}" ${a === c.age ? 'selected' : ''}>${a} an${a > 1 ? 's' : ''}</option>`).join('')}</select></div>
+          <div class="field"><label for="pc-age">Âge</label><select id="pc-age" class="input" data-change="child-age"><option value="" ${c.age ? '' : 'selected'}>Non précisé</option>${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((a) => `<option value="${a}" ${a === c.age ? 'selected' : ''}>${a} an${a > 1 ? 's' : ''}</option>`).join('')}</select></div>
         </div>
         <span class="label">Couleur</span>
         <div class="swatches">${Object.entries(PALETTES).map(([id, pp]) => `<button type="button" class="swatch ${c.color === id ? 'sel' : ''}" aria-pressed="${c.color === id}" aria-label="${pp.label}" data-act="pc-color" data-v="${id}" style="background:${pp.body}"></button>`).join('')}</div>
-        <span class="label">Caractère de l'animal en journée</span>
-        ${chips('pc-char', [['doux', 'Doux et calme'], ['joueur', 'Joueur'], ['rigolo', 'Rigolo']], c.character)}
-        <span class="muted">Le soir, il devient toujours calme.</span>
+        <span class="muted">Un animal différent accompagne chaque moment de la journée (coq au réveil, hibou pour dormir…) : il n'y a rien à choisir.</span>
       </div>
       <div class="side-preview"><span class="label">Aperçu</span>
         <div class="preview sm" style="background:${p.bg}">${animalSVG('hibou', { size: 180 })}<span class="preview-hi">Coucou ${childName()} !</span></div>
@@ -257,10 +278,9 @@ ctx.screens['p-child'] = {
   },
 };
 ctx.actions['pc-color'] = (b) => { ctx.s.child.color = b.dataset.v; save(); render(); };
-ctx.actions['pc-char'] = (b) => { ctx.s.child.character = b.dataset.v; save(); render(); };
 ctx.changes = ctx.changes || {};
 ctx.changes['child-name'] = (el) => { const v = el.value.trim(); if (v) { ctx.s.child.name = v; save(); } };
-ctx.changes['child-age'] = (el) => { ctx.s.child.age = Number(el.value); save(); render(); };
+ctx.changes['child-age'] = (el) => { ctx.s.child.age = el.value ? Number(el.value) : null; save(); render(); };
 
 // ---------- Rituels ----------
 let ritualTab = 'soir';
@@ -514,7 +534,7 @@ ctx.screens['p-wake'] = {
         ${toggle('wake.soon', w.soon, 'Annonce « bientôt » 20 min avant', 'Le ciel s’éclaircit, mais le compagnon dort encore')}
         <div class="row-setting"><div class="row-text"><span class="row-title">Éteindre l'écran après le réveil</span><span class="row-desc">Retour à l'accueil au bout de ${w.offAfter} min</span></div>${stepper('w-off', w.offAfter + ' min', 'Délai')}</div>
       </div>
-      ${(() => { const c = sleepCheck(ctx.s); return `<div class="check ${c.ok ? 'ok' : 'warn'}">${icon(c.ok ? ICONS.check : ICONS.sun, 24)}<div><strong>Semaine : ${fmtDur(c.night)} de nuit${c.nap ? ' + ' + fmtDur(c.nap) + ' de sieste' : ''}</strong><span>${c.ok ? 'Dans' : 'En dehors de'} la plage conseillée pour ${c.ageTxt} (${c.rangeTxt} par 24 h).</span></div></div>`; })()}
+      ${(() => { const c = sleepCheck(ctx.s); return `<div class="check ${c.ok ? 'ok' : 'warn'}">${icon(c.ok ? ICONS.check : ICONS.sun, 24)}<div><strong>Semaine : ${fmtDur(c.night)} de nuit${c.nap ? ' + ' + fmtDur(c.nap) + ' de sieste' : ''}</strong><span>${c.noAge ? 'Indiquez l’âge dans Tablette › Enfant pour savoir si c’est adapté.' : `${c.ok ? 'Dans' : 'En dehors de'} la plage conseillée pour ${c.ageTxt} (${c.rangeTxt} par 24 h).`}</span></div></div>`; })()}
       <p class="muted small">Le réveil est visuel et silencieux : il ne réveille pas l'enfant, il lui indique quand il peut se lever. La tablette doit rester sur Lunoo, branchée.</p>`;
     return parentLayout('p-wake', 'Quand le compagnon se réveille', body);
   },
@@ -608,6 +628,7 @@ ctx.actions['rw-undo'] = (b) => { const d = ctx.s.rewards.done[dayKey()]; if (d)
 
 ctx.screens['p-clock'] = {
   render() {
+    guideDone('clock');
     const s = ctx.s, ck = s.clock, sc = s.schedule;
     const ref = new Date(); while (ref.getDay() === 0 || ref.getDay() === 6) ref.setDate(ref.getDate() + 1);
     const slots = daySlots(s, ref); // on règle la journée type de la semaine

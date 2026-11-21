@@ -60,12 +60,12 @@ export function defaultSettings() {
   return {
     version: 1,
     onboarded: false,
-    child: { name: '', age: 4, animal: 'hibou', color: 'corail', character: 'doux' },
+    child: { name: '', age: null, color: 'corail' }, // l'âge est facultatif (réglages parent)
     schedule: {
       ritualStart: '19:00',
       wakeWeek: '7:00',
       wakeWeekend: '8:00',
-      nap: { on: true, start: '13:00', dur: 90 },
+      nap: { on: false, start: '13:00', dur: 90 },
     },
     rituals: {
       soir: [
@@ -91,19 +91,14 @@ export function defaultSettings() {
     sound: { type: 'pluie', vol: 30, cap: 40, dur: 20, fade: true },
     wake: { anim: 'soleil', soon: true, offAfter: 15 },
     access: { corner: 'hd', hold: 3, pin: null },
+    guide: { hidden: false, clock: false, story: false, night: false }, // « Premiers pas » de l'espace parent
     // Horloge intelligente. Le réveil et la sieste viennent de « schedule ».
     clock: {
       on: true,
       chime: false,
+      // Au départ, une journée minimale : le parent ajoute les autres moments quand il veut.
       slots: [
-        { id: 'c1', type: 'habiller', time: '7:15' },
-        { id: 'c2', type: 'manger', time: '7:30' },
-        { id: 'c3', type: 'jeu', time: '8:15' },
-        { id: 'c4', type: 'manger', time: '12:00' },
-        { id: 'c5', type: 'jeu', time: '15:00' },
-        { id: 'c6', type: 'douche', time: '18:15' },
-        { id: 'c7', type: 'manger', time: '18:45' },
-        { id: 'c8', type: 'dents', time: '19:20' },
+        { id: 'c1', type: 'jeu', time: '8:00' },
         { id: 'c9', type: 'dodo', time: '19:45' },
       ],
     },

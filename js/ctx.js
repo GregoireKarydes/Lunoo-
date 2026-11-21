@@ -65,6 +65,7 @@ export function sleepCheck(s) {
   const night = (toMin(s.schedule.wakeWeek) - bed + 1440) % 1440;
   const nap = s.schedule.nap.on ? s.schedule.nap.dur : 0;
   const total = night + nap;
+  if (!s.child.age) return { bed, night, nap, total, ok: true, noAge: true };
   const [lo, hi, ageTxt, rangeTxt] = sleepRange(s.child.age);
   return { bed, night, nap, total, ok: total >= lo && total <= hi, ageTxt, rangeTxt };
 }
@@ -118,6 +119,7 @@ export function startRitual(type) {
  * ids : histoires dans l'ordre ; childPicks : l'enfant choisit sur la tablette ; aucun des deux : nuit tout de suite.
  */
 export async function launchNight(type, ids = [], childPicks = false) {
+  if (ctx.s.guide && !ctx.s.guide.night) { ctx.s.guide.night = true; save(); }
   if (ctx.night) { ctx.night = null; await kv.del('night'); } // une nuit lancée toute seule par l'horloge
   if (ctx.s.clock && ctx.s.clock.override) { delete ctx.s.clock.override; save(); }
   ctx.nightOffUntil = null; await kv.del('nightOffUntil');
