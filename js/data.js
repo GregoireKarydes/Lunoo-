@@ -65,6 +65,9 @@ export const CLOCK_TYPES = {
 };
 
 export const SOUNDS = {
+  berceuse: { label: 'Berceuse de Brahms', music: true },
+  melodie: { label: 'Mélodie douce', music: true },
+  ventre: { label: 'Ventre de maman' },
   pluie: { label: 'Pluie douce' },
   vagues: { label: 'Vagues' },
   ronron: { label: 'Ronron' },
@@ -104,6 +107,7 @@ export const ICONS = {
   upload: 'M12 16V4M7 9l5-5 5 5M4 20h16',
   download: 'M12 4v12M7 11l5 5 5-5M4 20h16',
   close: 'M6 6l12 12M18 6L6 18',
+  music: 'M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
   manger: 'M7 2v8a2 2 0 0 0 4 0V2M9 2v20M17 2c-1.7 0-3 2.2-3 5s1.3 4 3 4v11M17 2v9',
   douche: 'M4 20V8a5 5 0 0 1 10 0M11 8h6l-1 3h-4zM12 14v1M15 14v1M18 14v1M12 18v1M15 18v1M18 18v1',
@@ -471,4 +475,94 @@ export function storyLength(min) {
 export function storyPage(t, child) {
   const s = storyText(t, child);
   return s.replace(/(^|[.!?]\s+|«\s)([a-zàâçéèêëîïôûùüÿñæœ])/g, (m, p, c) => p + c.toUpperCase());
+}
+
+// ---------- Ce que dit l'animal quand l'enfant le touche ----------
+// Phrases bienveillantes, variées, qui conviennent à une fille comme à un garçon. {P} = prénom.
+const TALK = {
+  reveil: [
+    'Bonjour {P} ! Le soleil est levé, une nouvelle journée commence.',
+    'Coucou {P} ! Tu as bien dormi ? Le coq te souhaite une très belle journée.',
+    'Debout, petit soleil ! Étire-toi bien, tout doucement, comme le coq.',
+  ],
+  habiller: [
+    '{P}, c’est le moment de s’habiller. Qu’est-ce que tu choisis aujourd’hui ?',
+    'On met ses habits, {P}. Un bras, puis l’autre, tranquillement. Tu sais faire !',
+    'Le pingouin a mis son nœud papillon. Et toi, {P}, tu mets quoi aujourd’hui ?',
+    'C’est l’heure de s’habiller. Prends ton temps, tu y arrives très bien.',
+  ],
+  manger: [
+    'À table, {P} ! Manger, ça donne de l’énergie pour jouer et grandir.',
+    'C’est l’heure de manger. L’ourson a hâte de se régaler avec toi.',
+    '{P}, on va manger. Tu peux goûter un petit peu de tout, c’est courageux.',
+    'Miam, c’est l’heure du repas ! On se lave les mains avant ?',
+  ],
+  ecole: [
+    '{P}, c’est l’heure de l’école. Tu vas apprendre plein de belles choses aujourd’hui.',
+    'Le renard a préparé son cartable. On se prépare pour l’école ?',
+    'C’est l’heure de partir à l’école. Passe une très belle journée, {P} !',
+  ],
+  jeu: [
+    'C’est l’heure de jouer, {P} ! À quoi as-tu envie de jouer ?',
+    'Le chien veut jouer avec toi ! Amuse-toi bien.',
+    'Temps de jeu ! Construis, dessine, invente : c’est toi qui choisis.',
+  ],
+  sortie: [
+    'On va dehors, {P} ! N’oublie pas tes chaussures.',
+    'C’est l’heure de prendre l’air. Le lapin adore sauter dans l’herbe.',
+    'Dehors, on peut courir, regarder les nuages et écouter les oiseaux.',
+  ],
+  douche: [
+    '{P}, c’est l’heure de la douche. L’eau toute chaude va te faire du bien.',
+    'Hop, à la douche ! Après, tu sentiras tout bon.',
+    'La grenouille adore l’eau. On y va, {P} ?',
+  ],
+  bain: [
+    'C’est l’heure du bain, {P}. Le canard t’attend avec plein de bulles !',
+    'Un bon bain tout chaud, ça fait du bien après une belle journée.',
+    'Plouf ! C’est l’heure du bain. On joue un peu avec les bulles ?',
+  ],
+  dents: [
+    '{P}, c’est l’heure de se brosser les dents. Deux minutes, et ton sourire va briller !',
+    'Le castor prend bien soin de ses dents. On fait comme lui ?',
+    'On brosse en haut, en bas, partout, avec des petits cercles. Tu sais faire !',
+  ],
+  calme: [
+    'C’est un moment tout calme, {P}. On respire doucement, comme le chat.',
+    'Pose-toi un peu. Inspire… et souffle tout doucement.',
+    'Un moment calme pour se reposer. Tu peux regarder un livre ou faire un câlin.',
+  ],
+  histoire: [
+    'C’est l’heure de l’histoire, {P}. Installe-toi bien confortablement.',
+    'Le mouton connaît plein d’histoires. Tout le monde est bien installé ?',
+  ],
+  sieste: [
+    'C’est l’heure de la sieste, {P}. Une petite pause pour reprendre des forces.',
+    'Chut… le chat fait la sieste. Toi aussi, tu peux te reposer un peu.',
+  ],
+  dodo: [
+    'C’est l’heure de dormir, {P}. Le hibou te souhaite une très douce nuit.',
+    'La journée est finie. Tu as fait plein de belles choses aujourd’hui. Bonne nuit, {P}.',
+    'Ferme les yeux tout doucement. Le hibou veille sur toi.',
+  ],
+};
+const DONE_TALK = [
+  'Bravo {P} ! Tu as du temps libre : tu peux jouer, dessiner ou te reposer.',
+  'Tu as très bien fait ça. Profite de ton temps libre, {P}.',
+  'Tu as bien travaillé. En attendant, joue tranquillement.',
+  'Super, {P} ! Maintenant, un peu de temps libre rien que pour toi.',
+];
+const NEXT_TXT = {
+  reveil: 'se lever', habiller: 's’habiller', manger: 'manger', ecole: 'partir à l’école', jeu: 'jouer', sortie: 'aller dehors',
+  douche: 'la douche', bain: 'le bain', dents: 'se brosser les dents', calme: 'un moment calme', histoire: 'l’histoire', sieste: 'la sieste', dodo: 'dormir',
+};
+const pickOne = (a) => a[Math.floor(Math.random() * a.length)];
+
+/** Phrase dite par l'animal du moment (ou le renard en temps libre), avec ce qui vient ensuite. */
+export function momentTalk(type, name, nextType, waiting = false) {
+  const n = name || '';
+  const fill = (t) => t.replaceAll('{P}', n).replace(/\s+,/g, ',').replace(/^,\s*/, '');
+  const main = waiting ? `${DONE_SAY[type] || ''} ${fill(pickOne(DONE_TALK))}` : fill(pickOne(TALK[type] || ['Coucou {P} !']));
+  const nx = nextType && NEXT_TXT[nextType] && !['sieste', 'dodo'].includes(type) ? ` Après, ce sera l’heure de ${NEXT_TXT[nextType]}.` : '';
+  return (main + nx).replace(/de le /g, 'du ').replace(/de les /g, 'des ');
 }

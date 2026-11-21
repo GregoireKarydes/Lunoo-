@@ -83,6 +83,7 @@ export function defaultSettings() {
     },
     stories: { choose: 2, napChoose: 1, mode: 'choice', playlistId: null, ambience: true },
     rewards: { on: true, adult: false, done: {} }, // done : { 'AAAA-MM-JJ': { slotId: heure } }
+    launch: { soir: { mode: 'pick', ids: [] }, sieste: { mode: 'pick', ids: [] } }, // derniers choix au lancement de la nuit
     customStories: [], // { id, title, animal, voice, kind: 'import' }
     recordings: {},    // storyId -> { voice, pages: n, date }
     playlists: [],     // { id, name, storyIds: [] }

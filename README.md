@@ -87,3 +87,9 @@ Polices : Fredoka et Nunito, licence SIL Open Font License (voir `fonts/`).
 
 - **Pendant les histoires** (appui long sur la lune) : histoire suivante, couper ou remettre l'ambiance (la coupure vaut pour la soirée), arrêter les histoires et passer à la nuit. Bouton « Ambiance » aussi sur l'écran de lecture.
 - **Audit UX** : bouton « C'est parti » toujours visible au choix des histoires, onglets simplifiés pour l'enfant, barre de temps sur les étapes du rituel, frise sur une ligne, mise en page portrait (accueil, lecture), titres de l'espace parent cohérents, réglages de la journée dans un ordre logique (horaires d'abord), étiquettes de voix seulement pour les voix de la famille.
+
+## Version 1.8
+
+- **Sons pour dormir** inspirés des veilleuses musicales : berceuse de Brahms (domaine public), mélodie douce originale, « ventre de maman », arrêt après 30 min possible. L'animal respire lentement la nuit.
+- **Lancer la nuit = tout régler au même endroit** : histoires (je choisis / l'enfant choisit combien / sans), son après les histoires, durée, lumière. Les choix sont gardés pour la fois suivante : la première nuit sert d'installation.
+- **Paroles de l'animal** : phrases bienveillantes et variées pour chaque moment, avec ce qui vient après ; aussi pour l'annonce vocale des moments.

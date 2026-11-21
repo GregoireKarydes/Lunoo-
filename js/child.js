@@ -1,6 +1,6 @@
 // Écrans de l'enfant : accueil, choix des histoires, lecture, moments, nuit, réveil.
 import { ctx, esc, go, render, startRitual, nextStep, momentInfo, nightPhase, endNight, enterNight, toMin, keepAwake } from './ctx.js';
-import { ANIMALS, PALETTES, ICONS, MOMENTS, SOUNDS, momentAnimal, storyLength, DONE_SAY } from './data.js';
+import { ANIMALS, PALETTES, ICONS, MOMENTS, SOUNDS, momentAnimal, storyLength, DONE_SAY, momentTalk } from './data.js';
 import { animalSVG, icon, moonSVG, sceneFor } from './animal.js';
 import { parentCorner } from './ui.js';
 import { allStories, playStory } from './narrator.js';
@@ -77,7 +77,7 @@ function clockHome() {
     ${parentCorner(info.bg, dark ? '#F5C451' : '#E2B24C')}
     <div class="ch-top"><h1 class="hello">Coucou ${esc(c.name)} !</h1></div>
     <div class="ch-main">
-      <div class="ch-animal" data-act="say" data-v="${esc(`${info.say} ${waiting ? 'En attendant, temps libre. ' : ''}Ensuite : ${next.info.label.toLowerCase()}.`)}" role="button" aria-label="Écouter : ${esc(info.say)}">
+      <div class="ch-animal" data-act="say" data-v="${esc(cur.type)}" data-next="${esc(next.type)}" data-wait="${waiting ? 1 : ''}" role="button" aria-label="Écouter : ${esc(info.say)}">
         ${sceneBlock(kind, !!info.asleep, 320)}
         ${activityBadge(info)}
       </div>
@@ -137,7 +137,7 @@ ctx.screens.home = {
     </div>`;
   },
 };
-ctx.actions.say = (b) => speak(b.dataset.v);
+ctx.actions.say = (b) => speak(momentTalk(b.dataset.v, ctx.s.child.name, b.dataset.next, !!b.dataset.wait));
 ctx.actions['start-ritual'] = (b) => startRitual(b.dataset.v);
 ctx.actions['free-stories'] = () => { setBedMuted(false); ctx.ritual = null; ctx.free = { chosen: [] }; go('pick', { max: 3, free: true }); };
 
@@ -374,7 +374,7 @@ ctx.screens.night = {
       ${parentCorner('#000', '#3A2A1A', 0.25)}
       <div class="night-animal ${lvl ? 'visible' : ''} ${p.preview && !lvl ? 'touched' : ''}" id="night-animal" style="--lvl:${lvl ? Math.min(0.9, 0.45 + lvl / 80).toFixed(2) : 0}">
         <div class="night-glow" style="background:${tint}"></div>
-        ${animalSVG('hibou', { colors: { body: '#7A4A33', belly: '#8E6E5C' }, size: 260, asleep: true })}
+        ${animalSVG('hibou', { colors: { body: '#7A4A33', belly: '#8E6E5C' }, size: 260, asleep: true, cls: 'sleep-breath' })}
         <p class="night-text">C'est encore l'heure de dormir</p>
         <p class="night-sub">Chut… le hibou dort encore. On reste dans son lit.</p>
         <div class="night-track" aria-label="Le matin arrive bientôt">

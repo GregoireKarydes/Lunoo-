@@ -674,3 +674,17 @@ select.input { padding: 0 12px; }
 .hold-btn .hold-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(217,169,63,.35); }
 .hold-btn.holding .hold-bar { animation: holdfill 1.5s linear forwards; }
 @media (orientation: portrait) { .player-skip { justify-content: center; } }
+/* Respiration lente de l'animal la nuit (environ 10 respirations par minute) */
+.animal.sleep-breath { animation: sleepbreath 6s ease-in-out infinite; transform-origin: 50% 80%; }
+@keyframes sleepbreath { 0%, 100% { transform: scale(1); } 45% { transform: scale(1.045, 1.06); } }
+@media (prefers-reduced-motion: reduce) { .animal.sleep-breath { animation: none; } }
+.ln-section { background: #fff; border-radius: 26px; padding: 18px 22px; display: flex; flex-direction: column; gap: 12px; }
+.ln-h { display: flex; align-items: center; gap: 10px; font-size: 22px; }
+.ln-h svg { color: #6A62C4; }
+.ln-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.ln-row > span:first-child { font-weight: 800; min-width: 80px; }
+.ln-section .pstory { background: var(--cream); }
+.ln-section .ln-story { border-color: var(--cream); }
+.ln-section .ln-story.sel { border-color: var(--navy); }
+.ln-section .pstory-grid { grid-auto-flow: column; grid-auto-columns: 170px; grid-template-columns: none; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x proximity; }
+.ln-section .pstory { scroll-snap-align: start; }

@@ -165,6 +165,49 @@ function build(type, ac, ch) {
         });
       });
     }
+  } else if (type === 'berceuse' || type === 'melodie') {
+    // Musique pour dormir : notes douces façon célesta, sur une note grave tenue.
+    const drone = ac.createOscillator(); const dg = ac.createGain();
+    drone.type = 'sine'; drone.frequency.value = 130.81; dg.gain.value = 0.05;
+    drone.connect(dg); dg.connect(out); drone.start(); ch.nodes.push(drone);
+    lfo(ac, ch, 0.1, 0.02, dg.gain, 0.05);
+    const lp = filter(ac, 'lowpass', 2400); lp.connect(out);
+    const bell = (f, t, len) => { blip(ac, lp, f, t, len, 0.11, 'triangle'); blip(ac, lp, f * 2, t, len * 0.6, 0.025); };
+    if (type === 'berceuse') {
+      // Berceuse de Brahms (1868, domaine public), en do majeur, très lente.
+      const N = { C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392, A4: 440, B4: 493.88, C5: 523.25 };
+      const M = 'E4 .5,E4 .5,G4 2,E4 .5,E4 .5,G4 2,E4 .5,G4 .5,C5 1,B4 1.5,A4 .5,A4 1,G4 2,D4 .5,E4 .5,F4 1,D4 1,D4 .5,E4 .5,F4 2,D4 .5,F4 .5,B4 .5,A4 .5,G4 1,B4 1,C5 2,C4 .5,C4 .5,C5 2,A4 .5,F4 .5,G4 2,E4 .5,C4 .5,F4 1,G4 1,A4 1,G4 2,C4 .5,C4 .5,C5 2,A4 .5,F4 .5,G4 2,E4 .5,C4 .5,F4 1,E4 1,D4 1,C4 3'
+        .split(',').map((x) => { const [n, d] = x.split(' '); return [N[n], Number(d)]; });
+      const beat = 0.62;
+      const play = () => {
+        if (!ch.alive) return;
+        let t = ac.currentTime + 0.2;
+        M.forEach(([f, d]) => { bell(f, t, Math.max(1.4, d * beat * 1.6)); t += d * beat; });
+        const tm = setTimeout(play, (t - ac.currentTime + 4) * 1000); // une pause, puis on recommence
+        ch.nodes.push({ stop: () => clearTimeout(tm), disconnect() {} });
+      };
+      play();
+    } else {
+      // Mélodie douce originale : promenade lente sur une gamme pentatonique (jamais de fausse note).
+      const scale = [261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25];
+      let i = 3;
+      every(ch, 1100, 1900, () => {
+        i = Math.max(0, Math.min(scale.length - 1, i + [-2, -1, -1, 0, 1, 1, 2][Math.floor(Math.random() * 7)]));
+        bell(scale[i], ac.currentTime, 2.2);
+        if (Math.random() < 0.25) bell(scale[Math.max(0, i - 2)] / 2, ac.currentTime + 0.05, 2.6);
+      });
+    }
+  } else if (type === 'ventre') {
+    // Ventre de maman : souffle grave qui pulse doucement, avec des battements lointains.
+    const g = ac.createGain();
+    loopSource(ac, ch, 'brown').connect(filter(ac, 'lowpass', 200)).connect(g).connect(out);
+    lfo(ac, ch, 1.05, 0.35, g.gain, 0.75);
+    const hb = ac.createGain(); hb.gain.value = 0; hb.connect(out);
+    const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = 48; o.connect(hb); o.start(); ch.nodes.push(o);
+    every(ch, 950, 950, () => {
+      const t = ac.currentTime + 0.05;
+      [0, 0.3].forEach((dt, k) => { hb.gain.setValueAtTime(0, t + dt); hb.gain.linearRampToValueAtTime(k ? 0.35 : 0.5, t + dt + 0.04); hb.gain.exponentialRampToValueAtTime(0.001, t + dt + 0.25); });
+    });
   } else if (type === 'boite') { // boîte à musique : notes pentatoniques lentes
     const notes = [1046.5, 1174.7, 1318.5, 1568, 1760, 2093];
     every(ch, 650, 1300, () => {

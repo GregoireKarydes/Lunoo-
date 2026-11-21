@@ -147,50 +147,89 @@ ctx.actions['go-night'] = () => go('night');
 ctx.actions['stop-night'] = () => confirmBox('Arrêter la nuit ? L’écran revient à la journée.', 'Arrêter').then((ok) => ok && endNight(false, true).then(() => render()));
 
 // ---------- Lancer la nuit (ou la sieste) : choisir les histoires, puis lancer ----------
-let launch = { type: 'soir', ids: [], mode: 'pick' };
+// Tout se règle au moment de dormir : histoires, son, veilleuse. Les choix sont gardés pour la fois suivante
+// (ce sont aussi les réglages par défaut de l'espace parent), donc la première nuit sert d'installation.
+const MAIN_SOUNDS = ['aucun', 'berceuse', 'melodie', 'blanc', 'pluie', 'ventre', 'coeur'];
+let launch = null;
+function launchState(type) {
+  if (!launch || launch.type !== type) {
+    const saved = (ctx.s.launch && ctx.s.launch[type]) || {};
+    const known = new Set(allStories(ctx.s).map((x) => x.id));
+    launch = { type, mode: saved.mode || 'pick', ids: (saved.ids || []).filter((id) => known.has(id)), more: false };
+  }
+  return launch;
+}
 ctx.screens['p-launch'] = {
-  mount(el, p) {},
   render(p) {
     const s = ctx.s, type = p.type === 'sieste' ? 'sieste' : 'soir';
-    if (launch.type !== type) launch = { type, ids: [], mode: 'pick' };
+    const L = launchState(type), name = childName();
     const stories = allStories(s);
-    const sel = launch.ids;
+    const sel = L.ids;
     const total = sel.reduce((n, id) => n + ((stories.find((x) => x.id === id) || {}).minutes || 0), 0);
+    const countKey = type === 'sieste' ? 'napChoose' : 'choose';
+    const dodo = type === 'sieste' ? 'la sieste' : 'la nuit';
     const wake = type === 'sieste' ? `réveil dans ${fmtDur(s.schedule.nap.dur)}` : `réveil à ${s.schedule.wakeWeek} (${s.schedule.wakeWeekend} le week-end)`;
-    const summary = launch.mode === 'child' ? `${childName()} choisit ${type === 'sieste' ? s.stories.napChoose : s.stories.choose} histoire(s) sur la tablette, puis ${type === 'sieste' ? 'la sieste' : 'la nuit'} commence`
-      : launch.mode === 'pick' && !sel.length ? 'Touchez les histoires dans l’ordre (ou lancez sans histoire)'
-      : (launch.mode === 'none' || !sel.length) ? `${type === 'sieste' ? 'La sieste' : 'La nuit'} commence tout de suite`
-      : `${sel.length} histoire${sel.length > 1 ? 's' : ''} · environ ${total} min, puis ${type === 'sieste' ? 'la sieste' : 'la nuit'}`;
+    const so = s.sound;
+    const sndLabel = so.type === 'aucun' ? 'sans son' : `${SOUNDS[so.type].label.replace(/^./, (c) => c.toLowerCase())}${so.dur ? ' ' + so.dur + ' min' : ' toute la nuit'}`;
+    const lightLabel = { off: 'écran noir', faible: 'veilleuse très faible', on: 'veilleuse allumée' }[s.night.mode];
+    const storiesTxt = L.mode === 'child' ? `${name} choisit ${s.stories[countKey]} histoire${s.stories[countKey] > 1 ? 's' : ''}`
+      : (L.mode === 'none' || !sel.length) ? 'Sans histoire'
+      : `${sel.length} histoire${sel.length > 1 ? 's' : ''} · environ ${total} min`;
+    const sounds = (L.more ? Object.keys(SOUNDS) : MAIN_SOUNDS.filter((k) => SOUNDS[k]));
+    if (!sounds.includes(so.type)) sounds.push(so.type);
+    const testing = ambiencePlaying() && !ctx.night && !ctx.ritual;
     const body = `
-      ${chips('ln-mode', [['pick', 'Je choisis les histoires'], ['child', `${childName()} choisit`], ['none', 'Sans histoire']], launch.mode)}
-      ${launch.mode === 'pick' ? `
-        ${s.playlists.length ? `<div class="toolbar"><span class="label">Playlists :</span>${chips('ln-pl', s.playlists.map((pl) => [pl.id, esc(pl.name)]), '')}</div>` : ''}
-        <div class="pstory-grid">${stories.map((st) => { const i = sel.indexOf(st.id); return `
-          <button type="button" class="pstory ln-story ${i >= 0 ? 'sel' : ''}" aria-pressed="${i >= 0}" data-act="ln-story" data-v="${esc(st.id)}">
-            <div class="thumb sm" style="background:${st.bg}">${animalSVG(st.animal || 'hibou', { size: 80 })}${i >= 0 ? `<span class="order" style="background:var(--navy)">${i + 1}</span>` : ''}</div>
-            <span class="story-title sm">${esc(st.title)}</span>
-            ${st.minutes ? `<span class="muted small">${storyLength(st.minutes).label} · ${st.minutes} min</span>` : ''}
-          </button>`; }).join('')}</div>` : ''}
+      <section class="ln-section">
+        <h2 class="ln-h">${icon(ICONS.histoire, 22)}Les histoires</h2>
+        ${chips('ln-mode', [['pick', 'Je les choisis'], ['child', `${name} choisit`], ['none', 'Sans histoire']], L.mode)}
+        ${L.mode === 'child' ? `<div class="ln-row"><span>Combien ?</span>${chips('ln-count', [[1, '1'], [2, '2'], [3, '3']], s.stories[countKey])}</div>` : ''}
+        ${L.mode === 'pick' ? `
+          ${s.playlists.length ? `<div class="toolbar"><span class="label">Playlists :</span>${chips('ln-pl', s.playlists.map((pl) => [pl.id, esc(pl.name)]), '')}</div>` : ''}
+          <span class="muted small">Touchez les histoires dans l’ordre de lecture${sel.length ? ` · <button type="button" class="link-btn small" data-act="ln-clear">tout retirer</button>` : ''}</span>
+          <div class="pstory-grid">${stories.map((st) => { const i = sel.indexOf(st.id); return `
+            <button type="button" class="pstory ln-story ${i >= 0 ? 'sel' : ''}" aria-pressed="${i >= 0}" data-act="ln-story" data-v="${esc(st.id)}">
+              <div class="thumb sm" style="background:${st.bg}">${animalSVG(st.animal || 'hibou', { size: 80 })}${i >= 0 ? `<span class="order" style="background:var(--navy)">${i + 1}</span>` : ''}</div>
+              <span class="story-title sm">${esc(st.title)}</span>
+              ${st.minutes ? `<span class="muted small">${storyLength(st.minutes).label} · ${st.minutes} min</span>` : ''}
+            </button>`; }).join('')}</div>` : ''}
+      </section>
+      <section class="ln-section">
+        <h2 class="ln-h">${icon(ICONS.nuit, 22)}Ensuite, pour ${dodo}</h2>
+        <div class="ln-row"><span>Son</span><div class="chips">${sounds.map((k) => `<button type="button" class="chip ${so.type === k ? 'sel' : ''}" aria-pressed="${so.type === k}" data-act="ln-snd" data-v="${k}">${icon(k === 'aucun' ? ICONS.close : (SOUNDS[k].music ? ICONS.music : ICONS.sound), 16)}${SOUNDS[k].label}</button>`).join('')}
+          ${L.more ? '' : '<button type="button" class="chip dashed" data-act="ln-more">Plus de sons…</button>'}</div></div>
+        ${so.type !== 'aucun' ? `<div class="ln-row"><span>Pendant</span>${chips('ln-dur', [[10, '10 min'], [20, '20 min'], [30, '30 min'], [45, '45 min'], [0, 'Toute la nuit']], so.dur)}
+          <button type="button" class="btn ghost sm" data-act="ln-test">${testing ? 'Arrêter l’écoute' : 'Écouter'}</button></div>` : ''}
+        <div class="ln-row"><span>Lumière</span>${chips('ln-light', [['off', 'Écran noir'], ['faible', 'Veilleuse très faible'], ['on', 'Veilleuse allumée']], s.night.mode)}</div>
+        <span class="muted small">Ces choix sont gardés pour les prochaines fois.</span>
+      </section>
       <div class="launch-bar">
-        <div><strong>${summary}</strong><span class="muted small">${wake}. Le son de la nuit démarre après les histoires.</span></div>
-        ${sel.length && launch.mode === 'pick' ? '<button type="button" class="btn ghost sm" data-act="ln-clear">Vider</button>' : ''}
+        <div><strong>${storiesTxt}, puis ${dodo}</strong><span class="muted small">Son : ${sndLabel} (après les histoires) · ${lightLabel} · ${wake}</span></div>
         <button type="button" class="btn primary xl" data-act="ln-go" data-v="${type}">${icon(ICONS.nuit, 26)}Lancer</button>
       </div>`;
     return parentLayout('p-home', type === 'sieste' ? 'Lancer la sieste' : 'Lancer la nuit', body);
   },
+  unmount() { if (!ctx.night && !ctx.ritual && ctx.route !== 'p-launch') stopAmbience(true); },
 };
-ctx.actions['ln-mode'] = (b) => { launch.mode = b.dataset.v; render(); };
+const saveLaunch = () => { ctx.s.launch = ctx.s.launch || {}; ctx.s.launch[launch.type] = { mode: launch.mode, ids: [...launch.ids] }; save(); };
+ctx.actions['ln-mode'] = (b) => { launch.mode = b.dataset.v; saveLaunch(); render(); };
+ctx.actions['ln-count'] = (b) => { ctx.s.stories[launch.type === 'sieste' ? 'napChoose' : 'choose'] = Number(b.dataset.v); save(); render(); };
 ctx.actions['ln-story'] = (b) => {
   const id = b.dataset.v, i = launch.ids.indexOf(id);
   if (i >= 0) launch.ids.splice(i, 1); else if (launch.ids.length < 5) launch.ids.push(id);
-  render();
+  saveLaunch(); render();
 };
-ctx.actions['ln-pl'] = (b) => { const pl = ctx.s.playlists.find((x) => x.id === b.dataset.v); if (pl) launch.ids = [...pl.storyIds]; render(); };
-ctx.actions['ln-clear'] = () => { launch.ids = []; render(); };
+ctx.actions['ln-pl'] = (b) => { const pl = ctx.s.playlists.find((x) => x.id === b.dataset.v); if (pl) launch.ids = [...pl.storyIds]; saveLaunch(); render(); };
+ctx.actions['ln-clear'] = () => { launch.ids = []; saveLaunch(); render(); };
+ctx.actions['ln-more'] = () => { launch.more = true; render(); };
+ctx.actions['ln-snd'] = (b) => { ctx.s.sound.type = b.dataset.v; save(); if (ambiencePlaying() && !ctx.night) startAmbience({ ...ctx.s.sound, dur: 1 }); render(); };
+ctx.actions['ln-dur'] = (b) => { ctx.s.sound.dur = Number(b.dataset.v); save(); render(); };
+ctx.actions['ln-light'] = (b) => { ctx.s.night.mode = b.dataset.v; save(); render(); };
+ctx.actions['ln-test'] = () => { if (ambiencePlaying()) stopAmbience(); else startAmbience({ ...ctx.s.sound, dur: 1 }); setTimeout(render, 50); };
 ctx.actions['ln-go'] = (b) => {
+  saveLaunch();
   const ids = launch.mode === 'pick' ? [...launch.ids] : [];
   const child = launch.mode === 'child';
-  launch = { type: 'soir', ids: [], mode: 'pick' };
+  launch = null;
   launchNight(b.dataset.v, ids, child);
 };
 
@@ -427,7 +466,7 @@ ctx.screens['p-sounds'] = {
     const playing = ambiencePlaying();
     const body = `
       <div class="sound-grid" role="radiogroup" aria-label="Son">${Object.entries(SOUNDS).map(([id, x]) => `
-        <button type="button" role="radio" aria-checked="${so.type === id}" class="sound-card ${so.type === id ? 'sel' : ''}" data-act="so-type" data-v="${id}">${icon(id === 'aucun' ? ICONS.close : ICONS.sound, 30)}<span>${x.label}</span></button>`).join('')}</div>
+        <button type="button" role="radio" aria-checked="${so.type === id}" class="sound-card ${so.type === id ? 'sel' : ''}" data-act="so-type" data-v="${id}">${icon(id === 'aucun' ? ICONS.close : (x.music ? ICONS.music : ICONS.sound), 30)}<span>${x.label}</span></button>`).join('')}</div>
       <div class="card">
         <div class="card-row"><strong>Volume</strong><strong class="h2">${so.vol} %</strong></div>
         <div class="vol-row">
@@ -440,7 +479,7 @@ ctx.screens['p-sounds'] = {
       </div>
       <div class="card">
         <strong>S'arrête après</strong>
-        ${chips('so-dur', [[10, '10 min'], [20, '20 min'], [45, '45 min'], [0, 'Toute la nuit']], so.dur)}
+        ${chips('so-dur', [[10, '10 min'], [20, '20 min'], [30, '30 min'], [45, '45 min'], [0, 'Toute la nuit']], so.dur)}
         <span class="muted small">${so.dur ? 'Le son s’arrête une fois l’enfant endormi.' : 'Toute la nuit : gardez un volume bas et la tablette éloignée du lit.'}</span>
       </div>
       <div class="card list">${toggle('sound.fade', so.fade, 'Fondu de fin', 'Le son baisse sur 3 minutes avant de s’arrêter')}</div>`;
@@ -517,7 +556,7 @@ ctx.screens['p-access'] = {
         <button type="button" class="btn ghost-dark" data-act="a-import">${icon(ICONS.upload, 20)}Importer</button>
         <input type="file" id="import-backup" accept="application/json,.json" hidden>
       </div>
-      <div class="span2 muted small">Lunoo 1.6 · toutes les données restent sur l'appareil · <button type="button" class="link-btn small" data-act="a-reset">Tout effacer</button></div>
+      <div class="span2 muted small">Lunoo 1.8 · toutes les données restent sur l'appareil · <button type="button" class="link-btn small" data-act="a-reset">Tout effacer</button></div>
     </div>`;
     return parentLayout('p-access', 'Code et sauvegarde', body);
   },
