@@ -275,7 +275,7 @@ ctx.screens.night = {
     const tint = { ambre: '#E39A47', rouge: '#D9786E', lune: '#E9C46A' }[n.tint] || '#E39A47';
     return `<div class="screen night" data-act="night-touch" aria-label="Nuit">
       ${parentCorner('#000', '#3A2A1A', 0.25)}
-      <div class="night-animal ${lvl ? 'visible' : ''}" id="night-animal" style="--lvl:${lvl ? lvl / 100 + 0.08 : 0}">
+      <div class="night-animal ${lvl ? 'visible' : ''}" id="night-animal" style="--lvl:${lvl ? Math.min(0.9, 0.45 + lvl / 80).toFixed(2) : 0}">
         <div class="night-glow" style="background:${tint}"></div>
         ${animalSVG(c.animal, { colors: { body: '#7A4A33', belly: '#8E6E5C' }, size: 260, asleep: true })}
         <p class="night-text">C'est encore l'heure de dormir</p>
