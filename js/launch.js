@@ -5,9 +5,8 @@ import { ctx, esc, save, launchNight, fmtDur } from './ctx.js';
 import { ICONS, SOUNDS, storyLength } from './data.js';
 import { animalSVG, icon } from './animal.js';
 import { allStories } from './narrator.js';
-import { startAmbience, stopAmbience, ambiencePlaying } from './sound.js';
+import { startAmbience, stopAmbience, ambiencePlaying, setAmbienceVolume } from './sound.js';
 
-const MAIN_SOUNDS = ['berceuse', 'melodie', 'pluie', 'ventre', 'coeur', 'blanc', 'vagues', 'aucun'];
 const LIGHTS = [['off', 'Écran noir', 'Rien ne brille'], ['faible', 'Veilleuse très faible', 'Juste une lueur'], ['on', 'Veilleuse allumée', 'Une douce lumière']];
 const DURS = [[10, '10 min'], [20, '20 min'], [30, '30 min'], [45, '45 min'], [0, 'Toute la nuit']];
 
@@ -22,7 +21,7 @@ export function openLaunch(type = 'soir') {
   type = type === 'sieste' ? 'sieste' : 'soir';
   const saved = (ctx.s.launch && ctx.s.launch[type]) || {};
   const known = new Set(allStories(ctx.s).map((x) => x.id));
-  W = { type, mode: saved.mode || 'child', ids: (saved.ids || []).filter((id) => known.has(id)), hist: [], edit: false };
+  W = { type, mode: saved.mode || 'child', ids: (saved.ids || []).filter((id) => known.has(id)), hist: [], edit: false, voice: 'all', len: 'all', sort: 'default' };
   if (W.mode === 'pick' && !W.ids.length) W.mode = 'child';
   W.step = saved.done ? 'recap' : 'stories';
   if (!el) {
@@ -91,28 +90,68 @@ function body() {
       html: `<div class="wz-grid g3">${[1, 2, 3].map((n) => tile(`data-w="count" data-v="${n}"`, `<strong class="big-n">${n}</strong><span>histoire${n > 1 ? 's' : ''}</span>`, s.stories[countKey()] === n)).join('')}</div>`,
     };
     case 'pick': {
-      const st = allStories(s);
+      const all = allStories(s);
+      // Voix disponibles : celles des proches (enregistrées) et la voix de la tablette.
+      const vOf = (x) => (x.recorded ? (x.voice || 'Famille') : 'Lunoo');
+      const voices = {};
+      all.forEach((x) => { voices[vOf(x)] = (voices[vOf(x)] || 0) + 1; });
+      const family = Object.keys(voices).filter((v) => v !== 'Lunoo').sort();
+      const nFamily = family.reduce((n, v) => n + voices[v], 0);
+      let list = all.filter((x) => (W.voice === 'all' ? true : W.voice === 'family' ? x.recorded : vOf(x) === W.voice));
+      if (W.len !== 'all') list = list.filter((x) => x.minutes && storyLength(x.minutes).id === W.len);
+      if (W.sort !== 'default') list = [...list].sort((p, q) => ((p.minutes || 999) - (q.minutes || 999)) * (W.sort === 'long' ? -1 : 1));
+      const total = W.ids.reduce((t, id) => t + ((all.find((x) => x.id === id) || {}).minutes || 0), 0);
+      const chip = (w, v, label) => `<button type="button" class="chip ${W[w] === v ? 'sel' : ''}" aria-pressed="${W[w] === v}" data-w="f-${w}" data-v="${esc(v)}">${label}</button>`;
       return {
         q: 'Quelles histoires ?',
         sub: 'Touchez-les dans l’ordre de lecture.',
-        html: `${s.playlists.length ? `<div class="chips">${s.playlists.map((pl) => `<button type="button" class="chip" data-w="pl" data-v="${esc(pl.id)}">${icon(ICONS.list, 16)}${esc(pl.name)}</button>`).join('')}</div>` : ''}
-          <div class="wz-stories">${st.map((x) => { const i = W.ids.indexOf(x.id); return `
+        html: `<div class="wz-filters">
+            <div class="wz-frow"><span class="label">Voix</span><div class="chips">
+              ${chip('voice', 'all', `Toutes (${all.length})`)}
+              ${nFamily ? chip('voice', 'family', `${icon(ICONS.mic, 16)}Voix des proches (${nFamily})`) : ''}
+              ${family.map((v) => chip('voice', v, `${esc(v)} (${voices[v]})`)).join('')}
+              ${chip('voice', 'Lunoo', `Voix Lunoo (${voices.Lunoo || 0})`)}
+            </div></div>
+            ${nFamily ? '' : '<span class="muted small wz-hint">Aucune voix de proche pour l’instant : enregistrez une histoire dans l’espace parent › Histoires.</span>'}
+            <div class="wz-frow"><span class="label">Durée</span><div class="chips">
+              ${chip('len', 'all', 'Toutes')}${chip('len', 'courte', 'Courtes')}${chip('len', 'moyenne', 'Moyennes')}${chip('len', 'longue', 'Longues')}
+            </div></div>
+            <div class="wz-frow"><span class="label">Trier</span><div class="chips">
+              ${chip('sort', 'default', 'Par défaut')}${chip('sort', 'short', 'Plus courtes d’abord')}${chip('sort', 'long', 'Plus longues d’abord')}
+            </div></div>
+            ${s.playlists.length ? `<div class="wz-frow"><span class="label">Playlists</span><div class="chips">${s.playlists.map((pl) => `<button type="button" class="chip" data-w="pl" data-v="${esc(pl.id)}">${icon(ICONS.list, 16)}${esc(pl.name)}</button>`).join('')}</div></div>` : ''}
+          </div>
+          ${list.length ? `<div class="wz-stories">${list.map((x) => { const i = W.ids.indexOf(x.id); return `
             <button type="button" class="wz-story ${i >= 0 ? 'sel' : ''}" aria-pressed="${i >= 0}" data-w="story" data-v="${esc(x.id)}">
               <span class="thumb sm" style="background:${x.bg}">${animalSVG(x.animal || 'hibou', { size: 64 })}${i >= 0 ? `<span class="order">${i + 1}</span>` : ''}</span>
-              <span class="wz-st"><strong>${esc(x.title)}</strong>${x.minutes ? `<span>${storyLength(x.minutes).label} · ${x.minutes} min</span>` : ''}</span>
-            </button>`; }).join('')}</div>`,
-        foot: `<button type="button" class="btn primary" data-w="pick-ok" ${W.ids.length ? '' : 'disabled'}>Suivant${W.ids.length ? ` (${W.ids.length})` : ''}</button>`,
+              <span class="wz-st"><strong>${esc(x.title)}</strong>
+                <span>${x.minutes ? `${icon(ICONS.clock, 14)} ${x.minutes} min · ${storyLength(x.minutes).label.toLowerCase()}` : 'Durée inconnue'}</span>
+                <span class="wz-voice ${x.recorded ? 'fam' : ''}">${icon(x.recorded ? ICONS.mic : ICONS.sound, 14)} ${x.recorded ? esc(vOf(x)) : 'Voix Lunoo'}</span></span>
+            </button>`; }).join('')}</div>` : '<p class="muted center">Aucune histoire avec ces filtres.</p>'}`,
+        foot: `<div class="wz-total">${W.ids.length ? `<strong>${W.ids.length} histoire${W.ids.length > 1 ? 's' : ''}</strong> · environ <strong>${total} min</strong> au total <button type="button" class="link-btn small" data-w="clear">tout retirer</button>` : '<span class="muted">Aucune histoire choisie</span>'}</div>
+          <button type="button" class="btn primary" data-w="pick-ok" ${W.ids.length ? '' : 'disabled'}>Suivant</button>`,
       };
     }
     case 'sound': {
-      const playing = ambiencePlaying() && !ctx.night;
+      const so = s.sound, playing = ambiencePlaying() && !ctx.night;
+      const keys = ['aucun', ...Object.keys(SOUNDS).filter((k) => k !== 'aucun')];
       return {
         q: `Un son pour ${dodo()} ?`,
-        sub: 'Il démarre après les histoires. Touchez le haut-parleur pour écouter.',
-        html: `<div class="wz-grid g4">${MAIN_SOUNDS.map((k) => `<div class="wz-snd">
-          ${tile(`data-w="snd" data-v="${k}"`, `${icon(k === 'aucun' ? ICONS.close : (SOUNDS[k].music ? ICONS.music : ICONS.sound), 30)}<strong>${SOUNDS[k].label}</strong>`, s.sound.type === k, 'sm')}
-          ${k === 'aucun' ? '' : `<button type="button" class="wz-play ${playing && W.preview === k ? 'on' : ''}" data-w="listen" data-v="${k}" aria-label="Écouter ${SOUNDS[k].label}">${icon(playing && W.preview === k ? ICONS.close : ICONS.sound, 18)}</button>`}
-        </div>`).join('')}</div>`,
+        sub: 'Il démarre après les histoires. Touchez un son, puis « Écouter » pour l’essayer.',
+        html: `<div class="wz-grid g5">${keys.map((k) => tile(`data-w="snd" data-v="${k}"`,
+            `${icon(k === 'aucun' ? ICONS.close : (SOUNDS[k].music ? ICONS.music : ICONS.sound), 26)}<strong>${SOUNDS[k].label}</strong>${playing && W.preview === k ? '<span class="wz-onair">♪ en écoute</span>' : ''}`,
+            so.type === k, 'xs')).join('')}</div>
+          ${so.type === 'aucun' ? '<p class="muted center">Pas de son : la nuit sera silencieuse.</p>' : `
+          <div class="wz-vol">
+            <span class="label">Volume</span>
+            <button type="button" class="round" data-w="vol" data-v="-5" aria-label="Moins fort">−</button>
+            <div class="vol-track"><div class="vol-fill" style="width:${so.vol}%"></div><span class="vol-cap" style="left:${so.cap}%"></span></div>
+            <button type="button" class="round" data-w="vol" data-v="5" aria-label="Plus fort">+</button>
+            <strong class="wz-volv">${so.vol} %</strong>
+            <button type="button" class="btn ${playing ? 'primary' : 'ghost'} wz-listen" data-w="listen" data-v="${so.type}">${icon(playing ? ICONS.close : ICONS.sound, 20)}${playing ? 'Arrêter' : 'Écouter'}</button>
+          </div>
+          <p class="muted small center">Maximum ${so.cap} % pour protéger ses oreilles. Posez la tablette loin du lit.</p>`}`,
+        foot: `<button type="button" class="btn primary" data-w="snd-ok">Suivant</button>`,
       };
     }
     case 'dur': return {
@@ -187,14 +226,26 @@ function onClick(e) {
     }
     case 'pl': { const pl = s.playlists.find((x) => x.id === v); if (pl) W.ids = [...pl.storyIds]; return draw(); }
     case 'pick-ok': persist(); return after('sound');
+    case 'f-voice': W.voice = v; return draw();
+    case 'f-len': W.len = v; return draw();
+    case 'f-sort': W.sort = v; return draw();
+    case 'clear': W.ids = []; return draw();
     case 'listen':
-      if (ambiencePlaying() && W.preview === v) { stopAmbience(); W.preview = null; }
+      if (ambiencePlaying() && !ctx.night) { stopAmbience(); W.preview = null; }
       else { W.preview = v; startAmbience({ ...s.sound, type: v, dur: 1 }); }
       return draw();
     case 'snd':
       s.sound.type = v; save();
-      if (v === 'aucun') return after('light');
-      return to('dur');
+      if (v === 'aucun') { if (ambiencePlaying() && !ctx.night) stopAmbience(); W.preview = null; }
+      else if (ambiencePlaying() && !ctx.night) { W.preview = v; startAmbience({ ...s.sound, type: v, dur: 1 }); }
+      return draw();
+    case 'vol': {
+      const so = s.sound;
+      so.vol = Math.max(5, Math.min(so.cap, so.vol + Number(v))); save();
+      setAmbienceVolume(so);
+      return draw();
+    }
+    case 'snd-ok': return s.sound.type === 'aucun' ? after('light') : to('dur');
     case 'dur': s.sound.dur = Number(v); save(); return after('light');
     case 'light': s.night.mode = v; save(); W.edit = false; return to('recap');
     case 'go': {
