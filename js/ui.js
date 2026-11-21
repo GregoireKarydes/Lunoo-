@@ -31,30 +31,30 @@ export function stepper(act, value, label) {
   </div>`;
 }
 
-const NAV = [
-  ['p-home', 'Accueil', ICONS.home],
-  ['p-child', 'L’enfant', ICONS.user],
-  ['p-clock', 'Horloge', ICONS.clock],
-  ['p-anim', 'Animations', ICONS.play],
-  ['p-rituals', 'Rituels', ICONS.list],
-  ['p-stories', 'Histoires', ICONS.histoire],
-  ['p-night', 'Veilleuse et nuit', ICONS.nuit],
-  ['p-sounds', 'Sons', ICONS.sound],
-  ['p-wake', 'Réveil', ICONS.sun],
-  ['p-access', 'Accès et sauvegarde', ICONS.lock],
+// Espace parent simple : l'accueil (les actions du quotidien) et 4 rubriques de réglages.
+// Chaque rubrique regroupe quelques pages, affichées en onglets sous le titre.
+const GROUPS = [
+  { id: 'home', label: 'Accueil', icon: ICONS.home, pages: [['p-home', 'Accueil'], ['p-launch', 'Lancer']] },
+  { id: 'day', label: 'La journée', icon: ICONS.clock, pages: [['p-clock', 'Les moments'], ['p-wake', 'Réveil et sieste'], ['p-rituals', 'Rituel du soir']] },
+  { id: 'stories', label: 'Histoires', icon: ICONS.histoire, pages: [['p-stories', 'Histoires']] },
+  { id: 'night', label: 'La nuit', icon: ICONS.nuit, pages: [['p-night', 'Veilleuse'], ['p-sounds', 'Son pour dormir']] },
+  { id: 'tablet', label: 'Tablette', icon: ICONS.lock, pages: [['p-child', 'Enfant'], ['p-access', 'Code et sauvegarde'], ['p-anim', 'Animations']] },
 ];
 
 export function parentLayout(active, title, body) {
   const name = esc(ctx.s.child.name || 'l’enfant');
+  const g = GROUPS.find((x) => x.pages.some(([r]) => r === active)) || GROUPS[0];
+  const tabs = g.pages.filter(([r]) => r !== 'p-launch');
   return `<div class="parent">
     <nav class="pnav" aria-label="Espace parent">
       <div class="pnav-brand">${moonSVG(28)}<span>Espace parent</span></div>
-      ${NAV.map(([r, l, d]) => `<button type="button" class="pnav-item ${r === active ? 'active' : ''}" data-go="${r}" ${r === active ? 'aria-current="page"' : ''}>${icon(d, 22)}<span>${r === 'p-child' ? name : l}</span></button>`).join('')}
+      ${GROUPS.map((x) => `<button type="button" class="pnav-item ${x === g ? 'active' : ''}" data-go="${x.pages[0][0]}" ${x === g ? 'aria-current="page"' : ''}>${icon(x.icon, 22)}<span>${x.label}</span></button>`).join('')}
       <span class="grow"></span>
       <button type="button" class="pnav-exit" data-act="exit-parent">${icon(ICONS.back, 20)}<span>Retour à l’écran de ${name}</span></button>
     </nav>
     <main class="pmain">
       <h1 class="ptitle">${title}</h1>
+      ${tabs.length > 1 ? `<div class="seg subnav">${tabs.map(([r, l]) => `<button type="button" class="${r === active ? 'sel' : ''}" data-go="${r}">${l}</button>`).join('')}</div>` : ''}
       ${body}
     </main>
   </div>`;

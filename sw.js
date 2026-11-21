@@ -1,6 +1,6 @@
 // Service worker : garde Lunoo disponible hors ligne.
 // Changez VERSION à chaque mise en ligne pour que les tablettes récupèrent la nouvelle version.
-const VERSION = 'lunoo-v1.3.0';
+const VERSION = 'lunoo-v1.4.0';
 const FILES = [
   './',
   'index.html',
@@ -30,6 +30,7 @@ const FILES = [
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/apple-touch-icon.png',
+  'icons/icon-maskable-512.png',
 ];
 
 self.addEventListener('install', (e) => {

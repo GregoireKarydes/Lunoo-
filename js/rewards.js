@@ -72,7 +72,7 @@ function markDone(slotId) {
 }
 
 // ---------- Voix ----------
-function speak(text) {
+export function speak(text) {
   if (!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);

@@ -6,7 +6,7 @@ import { parentCorner } from './ui.js';
 import { allStories, playStory } from './narrator.js';
 import { stopAmbience } from './sound.js';
 import { currentSlot } from './clock.js';
-import { REWARDABLE, buttonLabel, doneToday, dayKey } from './rewards.js';
+import { REWARDABLE, buttonLabel, doneToday, dayKey, speak } from './rewards.js';
 
 const pal = () => PALETTES[ctx.s.child.color] || PALETTES.corail;
 const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
@@ -57,7 +57,7 @@ const doneTodayFor = (sl) => { const r = ctx.s.rewards; return !!(r && r.done[da
 function rewardBtn(cur) {
   if (!ctx.s.rewards || !ctx.s.rewards.on || !REWARDABLE.includes(cur.type)) return '';
   if (doneToday(cur.id)) return `<div class="done-chip">★ C'est fait, bravo !</div>`;
-  return `<button type="button" class="done-btn" data-act="child-done" data-type="${cur.type}" data-slot="${esc(cur.id)}">${icon(cur.type === 'dents' ? ICONS.dents : ICONS.check, 34)}${esc(buttonLabel(cur.type))}</button>`;
+  return `<button type="button" class="done-btn" data-act="child-done" data-type="${cur.type}" data-slot="${esc(cur.id)}">${icon(ICONS.check, 34)}${esc(buttonLabel(cur.type))}</button>`;
 }
 
 const hhmm = () => { const d = new Date(); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
@@ -74,7 +74,7 @@ function clockHome() {
     ${parentCorner(info.bg, dark ? '#F5C451' : '#E2B24C')}
     <div class="ch-top"><h1 class="hello">Coucou ${esc(c.name)} !</h1></div>
     <div class="ch-main">
-      <div class="ch-animal">
+      <div class="ch-animal" data-act="say" data-v="${esc(`${info.say} Ensuite : ${next.info.label.toLowerCase()}.`)}" role="button" aria-label="Écouter : ${esc(info.say)}">
         ${sceneBlock(cur.type, !!info.asleep, 320)}
         ${activityBadge(info)}
       </div>
@@ -82,7 +82,7 @@ function clockHome() {
         <div class="ch-sayrow"><div class="ch-clock">${clockFace(next, 132, dark)}<span class="ch-digital" id="ch-digital">${hhmm()}</span></div><span class="ch-say">${esc(info.say)}</span></div>
         ${rewardBtn(cur)}
         <div class="ch-next">
-          <span class="ch-next-ico">${icon(ICONS[next.info.icon] || ICONS.clock, 30)}</span>
+          <span class="ch-next-ico" style="background:${next.info.bg}">${animalSVG(momentAnimal(next.type), { size: 56, asleep: !!next.info.asleep })}</span>
           <div class="grow"><span class="ch-next-label">Ensuite : ${esc(next.info.label)}</span>
             <div class="ch-bar" aria-label="Temps avant le prochain moment"><span style="width:${Math.round(progress * 100)}%"></span></div></div>
           <span class="ch-next-time">${next.time}</span>
@@ -94,7 +94,7 @@ function clockHome() {
         const early = nowT < today[0].min;
         const st = (sl === cur || (early && sl.type === 'dodo')) ? 'now' : (!early && sl.min < nowT ? 'past' : '');
         const star = doneTodayFor(sl) ? '<span class="ds-star" aria-label="fait">★</span>' : '';
-        return `<li class="ds ${st} ${star ? 'done' : ''}" style="background:${sl.info.bg};${sl.info.dark ? 'color:#FBF6EE' : ''}">${star}${icon(ICONS[sl.info.icon] || ICONS.clock, 24)}<span class="ds-t">${sl.time}</span></li>`;
+        return `<li class="ds ${st} ${star ? 'done' : ''}" style="background:${sl.info.bg};${sl.info.dark ? 'color:#FBF6EE' : ''}">${star}${icon(ICONS[sl.info.icon] || ICONS.clock, 28)}<span class="sr-only">${esc(sl.info.label)} ${sl.time}</span></li>`;
       }).join('')}
     </ol>
   </div>`;
@@ -133,6 +133,7 @@ ctx.screens.home = {
     </div>`;
   },
 };
+ctx.actions.say = (b) => speak(b.dataset.v);
 ctx.actions['start-ritual'] = (b) => startRitual(b.dataset.v);
 ctx.actions['free-stories'] = () => { ctx.ritual = null; ctx.free = { chosen: [] }; go('pick', { max: 3, free: true }); };
 

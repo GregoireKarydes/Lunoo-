@@ -56,69 +56,50 @@ ctx.actions['exit-parent'] = () => {
   else go('home');
 };
 
-// ---------- Tableau de bord ----------
-// Ce que seul un parent peut faire sur l'écran de l'enfant : passer un moment, lancer les histoires, avancer le rituel.
-function screenControl(s) {
-  const name = childName();
-  if (ctx.ritual) {
-    const st = ctx.ritual.steps[ctx.ritual.idx];
-    return `<div class="card alert-card"><div><strong>Rituel en cours${st ? ' : ' + MOMENTS[st.id].label.toLowerCase() : ''}</strong><span class="muted">Étape ${ctx.ritual.idx + 1} sur ${ctx.ritual.steps.length}</span></div>
-      <button type="button" class="btn ghost" data-act="exit-parent">Revenir</button><button type="button" class="btn primary" data-act="rit-next" style="background:var(--moon);color:var(--navy)">Étape suivante</button></div>`;
-  }
-  if (!s.clock.on || ctx.night) return '';
-  const { cur, next, today, override } = currentSlot(s);
-  return `<div class="card"><div class="card-row"><strong>L’écran de ${name} montre : ${esc(cur.info.label)}</strong>${override ? '<span class="tag fam">Choisi par vous</span>' : ''}</div>
-    <div class="toolbar">
-      <button type="button" class="btn primary sm" data-act="ov-next" data-v="${esc(next.id)}">${icon(ICONS.next, 18)}Passer à « ${esc(next.info.label)} »</button>
-      ${override ? '<button type="button" class="btn ghost sm" data-act="ov-clear">Revenir à l’horaire</button>' : ''}
-      <button type="button" class="btn ghost sm" data-act="free-stories">${icon(ICONS.histoire, 18)}Lancer des histoires</button>
-    </div>
-    <span class="label small">Ou afficher tout de suite :</span>
-    ${chips('ov-pick', today.filter((x) => x.type !== 'reveil').map((x) => [x.id, `${x.time} ${esc(x.info.label)}`]), cur.id)}
-    <span class="muted small">Le moment choisi reste affiché jusqu’au prochain changement prévu (1 h au plus). Sur son écran, ${name} peut seulement toucher « C’est fait ! ».</span></div>`;
-}
+// ---------- Accueil parent : seulement les actions du quotidien ----------
+const sleepTypeNow = (s) => { const { cur } = currentSlot(s); return cur.type === 'sieste' && s.schedule.nap.on ? 'sieste' : 'soir'; };
+ctx.screens['p-home'] = {
+  render() {
+    const s = ctx.s, name = childName();
+    let main;
+    if (ctx.night) {
+      main = `<div class="big-status night">${icon(ICONS.nuit, 40)}<div><strong>${ctx.night.type === 'sieste' ? 'Sieste' : 'Nuit'} en cours</strong><span>Réveil à ${new Date(ctx.night.wakeAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span></div></div>
+        <div class="home-actions-grid">
+          <button type="button" class="home-act" data-act="go-night">${icon(ICONS.nuit, 34)}<strong>Revenir à la nuit</strong></button>
+          <button type="button" class="home-act" data-go="p-launch" data-p='{"type":"${ctx.night.type === 'sieste' ? 'sieste' : 'soir'}"}'>${icon(ICONS.histoire, 34)}<strong>Histoires puis nuit</strong></button>
+          <button type="button" class="home-act warn" data-act="stop-night">${icon(ICONS.sun, 34)}<strong>Arrêter la nuit</strong></button>
+        </div>`;
+    } else if (ctx.ritual) {
+      const st = ctx.ritual.steps[ctx.ritual.idx];
+      main = `<div class="big-status">${icon(ICONS.list, 40)}<div><strong>Rituel en cours${st ? ' : ' + MOMENTS[st.id].label.toLowerCase() : ''}</strong><span>Étape ${ctx.ritual.idx + 1} sur ${ctx.ritual.steps.length}</span></div></div>
+        <div class="home-actions-grid">
+          <button type="button" class="home-act" data-act="rit-next">${icon(ICONS.next, 34)}<strong>Étape suivante</strong></button>
+          <button type="button" class="home-act" data-act="exit-parent">${icon(ICONS.back, 34)}<strong>Revenir au rituel</strong></button>
+        </div>`;
+    } else {
+      const type = sleepTypeNow(s);
+      const clock = s.clock.on ? currentSlot(s) : null;
+      const stars = Object.keys((s.rewards && s.rewards.done[dayKey()]) || {}).length;
+      main = `<button type="button" class="home-big" data-go="p-launch" data-p='{"type":"${type}"}'>${icon(ICONS.nuit, 46)}<span><strong>${type === 'sieste' ? 'Lancer la sieste' : 'Lancer la nuit'}</strong><span>Choisir les histoires, puis ${type === 'sieste' ? 'la sieste' : 'la nuit'} commence toute seule</span></span></button>
+        <div class="home-actions-grid">
+          ${clock ? `<button type="button" class="home-act" data-act="ov-next" data-v="${esc(clock.next.id)}">${icon(ICONS.next, 34)}<strong>Passer à « ${esc(clock.next.info.label)} »</strong></button>` : ''}
+          <button type="button" class="home-act" data-act="free-stories">${icon(ICONS.histoire, 34)}<strong>Lancer des histoires</strong></button>
+        </div>
+        ${clock ? `<div class="home-now"><span>L’écran de ${name} : <strong>${esc(clock.cur.info.label)}</strong>${clock.override ? ' (choisi par vous)' : ''}${stars ? ` · ${'★'.repeat(Math.min(stars, 8))} aujourd’hui` : ''}</span>
+          ${clock.override ? '<button type="button" class="link-btn small" data-act="ov-clear">Revenir à l’horaire</button>' : ''}
+          <details><summary>Afficher un autre moment</summary>${chips('ov-pick', clock.today.filter((x) => x.type !== 'reveil').map((x) => [x.id, `${x.time} ${esc(x.info.label)}`]), clock.cur.id)}</details></div>` : ''}
+        <p class="muted small">Envie du rituel complet (bain, temps calme…) ? <button type="button" class="link-btn small" data-act="launch" data-v="soir">Lancer le rituel du soir</button></p>`;
+    }
+    return parentLayout('p-home', new Date().getHours() < 17 ? 'Bonjour !' : 'Bonsoir !', main);
+  },
+};
 ctx.actions['ov-next'] = (b) => { setOverride(ctx.s, b.dataset.v); save(); go('home'); };
 ctx.actions['ov-pick'] = (b) => { setOverride(ctx.s, b.dataset.v); save(); go('home'); };
 ctx.actions['ov-clear'] = () => { delete ctx.s.clock.override; save(); render(); };
 ctx.actions['rit-next'] = () => nextStep();
-
-ctx.screens['p-home'] = {
-  render() {
-    const s = ctx.s, c = s.child, sc = s.schedule, chk = sleepCheck(s);
-    const steps = (t) => s.rituals[t].filter((x) => x.on).map((x) => `<span class="mini-chip" style="background:${MOMENTS[x.id].bg};${MOMENTS[x.id].dark ? 'color:#FBF6EE' : ''}">${MOMENTS[x.id].label}${x.dur ? ' ' + x.dur + ' min' : ''}</span>`).join('');
-    const pl = s.stories.mode === 'playlist' && s.playlists.find((p) => p.id === s.stories.playlistId);
-    const nightTxt = { off: 'Écran <strong>éteint</strong>', faible: 'Veilleuse <strong>très faible</strong>', on: 'Écran <strong>allumé</strong>' }[s.night.mode];
-    const body = `
-      <div class="ph-head">
-        <span class="avatar" style="background:${PALETTES[c.color].bg}">${animalSVG('hibou', { size: 54 })}</span>
-        <div><strong class="h2">${childName()}, ${c.age} an${c.age > 1 ? 's' : ''}</strong><span class="muted">Tout est enregistré sur cette tablette et fonctionne hors ligne.</span></div>
-      </div>
-      ${ctx.night ? `<div class="card alert-card"><div><strong>${ctx.night.type === 'sieste' ? 'Sieste' : 'Nuit'} en cours</strong><span class="muted">Réveil prévu à ${new Date(ctx.night.wakeAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span></div>
-        <button type="button" class="btn ghost" data-go="p-launch" data-p='{"type":"${ctx.night.type === 'sieste' ? 'sieste' : 'soir'}"}'>Histoires puis nuit</button><button type="button" class="btn ghost" data-act="go-night">Revenir à la nuit</button><button type="button" class="btn danger" data-act="stop-night">Arrêter</button></div>` : ''}
-      ${screenControl(s)}
-      <div class="small muted">Rituel complet avec les étapes du soir (bain, temps calme…) : <button type="button" class="link-btn small" data-act="launch" data-v="soir">le lancer</button></div>
-      <div class="grid2">
-        <button type="button" class="launch dark" data-go="p-launch" data-p='{"type":"soir"}'><span class="launch-ico">${icon(ICONS.nuit, 28)}</span><span><strong>Lancer la nuit</strong><span>Choisir les histoires, puis la nuit commence toute seule</span></span></button>
-        <button type="button" class="launch green" data-go="p-launch" data-p='{"type":"sieste"}' ${sc.nap.on ? '' : 'disabled'}><span class="launch-ico">${icon(ICONS.play, 28, 'fill="#fff" stroke="none"')}</span><span><strong>Lancer la sieste</strong><span>${sc.nap.on ? `${sc.nap.start} · ${fmtDur(sc.nap.dur)} · histoires puis sieste` : 'Sieste désactivée'}</span></span></button>
-      </div>
-      <div class="grid2">
-        <button type="button" class="card link-card" data-go="p-rituals"><span class="card-row"><strong>Rituels</strong><span class="edit">Modifier</span></span><div class="mini-chips">${steps('soir')}</div><span class="muted">Sieste : ${s.rituals.sieste.filter((x) => x.on).map((x) => MOMENTS[x.id].label.toLowerCase()).join(', ')}</span></button>
-        <button type="button" class="card link-card" data-go="p-wake"><span class="card-row"><strong>Réveil</strong><span class="edit">Modifier</span></span>
-          <div class="times"><span><b>${sc.wakeWeek}</b>semaine</span><span><b>${sc.wakeWeekend}</b>week-end</span>${sc.nap.on ? `<span><b>${fmtDur(sc.nap.dur)}</b>de sieste</span>` : ''}</div>
-          <span class="${chk.ok ? 'ok-txt' : 'warn-txt'}">${fmtDur(chk.total)} de sommeil · ${chk.ok ? 'plage conseillée' : 'hors plage conseillée'}</span></button>
-        <button type="button" class="card link-card" data-go="p-stories"><span class="card-row"><strong>Histoires</strong><span class="edit">Gérer</span></span>
-          <span>${pl ? `Playlist <strong>${esc(pl.name)}</strong> lue telle quelle` : `${childName()} choisit <strong>${s.stories.choose} histoire${s.stories.choose > 1 ? 's' : ''}</strong> le soir`}</span>
-          <span class="muted">${allStories(s).length} histoires · ${Object.keys(s.recordings).length + s.customStories.length} avec une voix de la famille</span></button>
-        <button type="button" class="card link-card" data-go="p-night"><span class="card-row"><strong>Nuit</strong><span class="edit">Modifier</span></span>
-          <span>${nightTxt}${s.night.touchShow ? ' · l’animal apparaît si on touche l’écran' : ''}</span>
-          <span class="muted">${SOUNDS[s.sound.type].label}${s.sound.type !== 'aucun' ? `, volume ${s.sound.vol} %, ${s.sound.dur ? 'arrêt après ' + s.sound.dur + ' min' : 'toute la nuit'}` : ''}</span></button>
-      </div>`;
-    return parentLayout('p-home', 'Bonjour !', body);
-  },
-};
 ctx.actions.launch = (b) => startRitual(b.dataset.v);
 ctx.actions['go-night'] = () => go('night');
-ctx.actions['stop-night'] = () => endNight(false, true).then(() => render());
+ctx.actions['stop-night'] = () => confirmBox('Arrêter la nuit ? L’écran revient à la journée.', 'Arrêter').then((ok) => ok && endNight(false, true).then(() => render()));
 
 // ---------- Lancer la nuit (ou la sieste) : choisir les histoires, puis lancer ----------
 let launch = { type: 'soir', ids: [], mode: 'pick' };
@@ -409,7 +390,7 @@ ctx.screens['p-sounds'] = {
           <button type="button" class="round" data-act="so-vol" data-d="5" aria-label="Plus fort">+</button>
           <button type="button" class="btn ghost sm" data-act="so-test">${playing ? 'Arrêter l’essai' : 'Écouter'}</button>
         </div>
-        <span class="muted small">Plafonné à ${so.cap} % (modifiable dans Accès et sauvegarde). Posez la tablette loin du lit, à 2 m si possible.</span>
+        <span class="muted small">Plafonné à ${so.cap} % (modifiable dans Tablette › Code et sauvegarde). Posez la tablette loin du lit, à 2 m si possible.</span>
       </div>
       <div class="card">
         <strong>S'arrête après</strong>
@@ -492,7 +473,7 @@ ctx.screens['p-access'] = {
       </div>
       <div class="span2 muted small">Lunoo V1 · toutes les données restent sur l'appareil · <button type="button" class="link-btn small" data-act="a-reset">Tout effacer</button></div>
     </div>`;
-    return parentLayout('p-access', 'Accès et sauvegarde', body);
+    return parentLayout('p-access', 'Code et sauvegarde', body);
   },
   mount(el) {
     const f = el.querySelector('#import-backup');
@@ -572,6 +553,7 @@ ctx.screens['p-clock'] = {
       <div class="card list">
         ${toggle('clock.on', ck.on, 'Horloge de la journée', `L’écran de ${childName()} montre le moment en cours : image, couleur et message changent tout seuls`)}
         ${toggle('clock.chime', ck.chime, 'Petit carillon à chaque changement', 'Un son très doux quand on passe au moment suivant')}
+        ${toggle('clock.voice', ck.voice !== false, 'Annoncer chaque moment à voix haute', `« ${childName()}, c’est l’heure de manger ! » (jamais pendant le dodo ou la sieste). En touchant l’animal, ${childName()} réentend le message.`)}
         ${toggle('rewards.on', s.rewards.on, 'Bouton « C’est fait ! »', `${childName()} touche le bouton quand il a fini (s’habiller, manger, les dents…) : confettis et bravo à voix haute`)}
         ${s.rewards.on ? toggle('rewards.adult', s.rewards.adult, 'Vérifié par un adulte', 'Avant la fête, un adulte regarde puis garde le doigt appuyé 2 secondes') : ''}
       </div>

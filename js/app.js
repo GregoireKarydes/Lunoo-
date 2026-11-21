@@ -6,6 +6,7 @@ import { currentSlot, isSleepTime, sleepStartedAt } from './clock.js';
 import './onboarding.js';
 import './child.js';
 import './preview.js';
+import { speak } from './rewards.js';
 import { openParent } from './parent.js';
 import './studio.js';
 
@@ -98,9 +99,19 @@ setInterval(() => { if (document.visibilityState === 'visible') keepAwake(); }, 
 setInterval(async () => {
   if (await clockTick()) return;
   if (ctx.route === 'home') {
-    const id = ctx.s.clock.on ? currentSlot(ctx.s).cur.id : null;
-    if (id !== lastSlot) { lastSlot = id; if (id && ctx.s.clock.chime) chime(); }
-    render();
+    const cs = ctx.s.clock.on ? currentSlot(ctx.s) : null;
+    const id = cs ? cs.cur.id : null;
+    if (id !== lastSlot) {
+      lastSlot = id;
+      if (id && ctx.s.clock.chime) chime();
+      // Annonce à voix haute du nouveau moment (jamais pendant le sommeil).
+      if (cs && ctx.s.clock.voice !== false && !cs.cur.info.asleep) setTimeout(() => speak(`${ctx.s.child.name || ''}, ${cs.cur.info.say}`), 1200);
+      render();
+    } else if (cs) {
+      // Même moment : on avance juste la barre, sans redessiner (les animations ne repartent pas de zéro).
+      const bar = document.querySelector('.ch-bar span');
+      if (bar) bar.style.width = Math.round(cs.progress * 100) + '%';
+    } else render();
   }
 }, 30000);
 
