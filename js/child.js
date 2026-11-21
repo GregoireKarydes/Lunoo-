@@ -1,23 +1,65 @@
 // Écrans de l'enfant : accueil, choix des histoires, lecture, moments, nuit, réveil.
 import { ctx, esc, go, render, startRitual, nextStep, momentInfo, nightPhase, endNight, toMin, keepAwake } from './ctx.js';
-import { ANIMALS, PALETTES, ICONS, MOMENTS } from './data.js';
+import { ANIMALS, PALETTES, ICONS, MOMENTS, momentAnimal, storyLength } from './data.js';
 import { animalSVG, icon, moonSVG, sceneFor } from './animal.js';
 import { parentCorner } from './ui.js';
 import { allStories, playStory } from './narrator.js';
 import { stopAmbience } from './sound.js';
 import { currentSlot } from './clock.js';
+import { REWARDABLE, buttonLabel, doneToday, dayKey } from './rewards.js';
 
 const pal = () => PALETTES[ctx.s.child.color] || PALETTES.corail;
 const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 
 // ---------- Accueil ----------
+// Animal du moment + son décor animé (bulles au bain, gouttes sous la douche…).
+export function sceneBlock(kind, asleep, size) {
+  const a = momentAnimal(kind);
+  const sc = sceneFor(kind, { asleep });
+  return `${animalSVG(a, { size, cls: sc.cls || (asleep ? '' : 'bob'), asleep, label: ANIMALS[a].label })}${sc.html}`;
+}
 function activityBadge(info, size = 120) {
   return `<span class="act-badge pulse" style="width:${size}px;height:${size}px;background:${info.dark ? '#2E3270' : '#fff'};color:${info.dark ? '#F5C451' : '#1F2250'}">${icon(ICONS[info.icon] || ICONS.clock, Math.round(size * 0.52))}</span>`;
+}
+
+// Horloge à aiguilles : la part colorée montre le temps qui reste avant le prochain moment,
+// et l'icône du prochain moment est posée sur le cadran, à son heure.
+const pt = (cx, r, deg) => [cx + r * Math.sin(deg * Math.PI / 180), cx - r * Math.cos(deg * Math.PI / 180)];
+export function clockFace(next, size = 150, dark = false) {
+  const d = new Date(), h = d.getHours() % 12, m = d.getMinutes();
+  const aH = (h + m / 60) * 30, aM = m * 6;
+  const cx = 60, R = 50;
+  let wedge = '', marker = '';
+  if (next) {
+    const nowT = d.getHours() * 60 + m;
+    const diff = (next.min - nowT + 1440) % 1440;
+    if (diff > 0 && diff < 720) {
+      const aN = aH + diff / 2; // 0,5° par minute pour la petite aiguille
+      const [x1, y1] = pt(cx, R - 4, aH), [x2, y2] = pt(cx, R - 4, aN);
+      wedge = `<path class="cf-wedge" d="M${cx} ${cx} L${x1.toFixed(1)} ${y1.toFixed(1)} A${R - 4} ${R - 4} 0 ${diff > 360 ? 1 : 0} 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z" fill="${next.info.bg === '#FFFFFF' ? '#F5C451' : next.info.bg}"/>`;
+      const [mx, my] = pt(cx, R + 1, aN);
+      marker = `<g transform="translate(${(mx - 9).toFixed(1)} ${(my - 9).toFixed(1)})"><circle cx="9" cy="9" r="11" fill="#fff" stroke="#1F2250" stroke-width="2"/><svg x="2" y="2" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1F2250" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="${ICONS[next.info.icon] || ICONS.clock}"/></svg></g>`;
+    }
+  }
+  const ticks = Array.from({ length: 12 }, (_, i) => { const [a, b] = pt(cx, R - 2, i * 30), [c2, d2] = pt(cx, R - (i % 3 ? 7 : 11), i * 30); return `<line x1="${a.toFixed(1)}" y1="${b.toFixed(1)}" x2="${c2.toFixed(1)}" y2="${d2.toFixed(1)}"/>`; }).join('');
+  return `<svg class="clockface ${dark ? 'dark' : ''}" viewBox="-6 -6 132 132" width="${size}" height="${size}" role="img" aria-label="Il est ${d.getHours()} heures ${m}">
+    <circle cx="${cx}" cy="${cx}" r="${R}" class="cf-bg"/>${wedge}<g class="cf-ticks">${ticks}</g>
+    <line class="cf-h" id="cf-h" x1="60" y1="60" x2="60" y2="30" transform="rotate(${aH.toFixed(1)} 60 60)"/>
+    <line class="cf-m" id="cf-m" x1="60" y1="60" x2="60" y2="18" transform="rotate(${aM} 60 60)"/>
+    <circle cx="60" cy="60" r="5" class="cf-dot"/>${marker}</svg>`;
 }
 
 // « Au dodo » n'apparaît que le soir (dès 1 h avant le rituel), pour éviter une nuit lancée à midi.
 function eveningNow(t) { const r = toMin(ctx.s.schedule.ritualStart); return t >= r - 60 || t < 4 * 60; }
 
+const doneTodayFor = (sl) => { const r = ctx.s.rewards; return !!(r && r.done[dayKey()] && r.done[dayKey()][sl.id]); };
+function rewardBtn(cur) {
+  if (!ctx.s.rewards || !ctx.s.rewards.on || !REWARDABLE.includes(cur.type)) return '';
+  if (doneToday(cur.id)) return `<div class="done-chip">★ C'est fait, bravo !</div>`;
+  return `<button type="button" class="done-btn" data-act="child-done" data-type="${cur.type}" data-slot="${esc(cur.id)}">${icon(cur.type === 'dents' ? ICONS.dents : ICONS.check, 34)}${esc(buttonLabel(cur.type))}</button>`;
+}
+
+let handTimer = null;
 function clockHome() {
   const s = ctx.s, c = s.child;
   const { cur, next, today, progress } = currentSlot(s);
@@ -31,22 +73,17 @@ function clockHome() {
     <div class="ch-top"><h1 class="hello">Coucou ${esc(c.name)} !</h1></div>
     <div class="ch-main">
       <div class="ch-animal">
-        ${(() => { const sc = sceneFor(cur.type, { asleep: !!info.asleep }); return `${animalSVG(c.animal, { palette: c.color, size: 320, cls: sc.cls || (info.asleep ? '' : 'bob'), asleep: !!info.asleep, label: ANIMALS[c.animal].label })}${sc.html}`; })()}
+        ${sceneBlock(cur.type, !!info.asleep, 320)}
         ${activityBadge(info)}
       </div>
       <div class="ch-side">
-        <span class="ch-say">${esc(info.say)}</span>
+        <div class="ch-sayrow">${clockFace(next, 132, dark)}<span class="ch-say">${esc(info.say)}</span></div>
+        ${rewardBtn(cur)}
         <div class="ch-next">
           <span class="ch-next-ico">${icon(ICONS[next.info.icon] || ICONS.clock, 30)}</span>
           <div class="grow"><span class="ch-next-label">Ensuite : ${esc(next.info.label)}</span>
             <div class="ch-bar" aria-label="Temps avant le prochain moment"><span style="width:${Math.round(progress * 100)}%"></span></div></div>
           <span class="ch-next-time">${next.time}</span>
-        </div>
-        <div class="ch-actions">
-          <button type="button" class="mid-btn light" data-act="free-stories">${icon(ICONS.histoire, 30)}Mes histoires</button>
-          ${napTime && sc.nap.on
-            ? `<button type="button" class="mid-btn nap pulse" data-act="start-ritual" data-v="sieste">${icon(ICONS.calme, 30)}La sieste</button>`
-            : (eveningNow(nowT) ? `<button type="button" class="mid-btn dark ${Math.abs(nowT - toMin(sc.ritualStart)) <= 30 ? 'pulse' : ''}" data-act="start-ritual" data-v="soir">${icon(ICONS.nuit, 30)}Au dodo !</button>` : '')}
         </div>
       </div>
     </div>
@@ -54,13 +91,24 @@ function clockHome() {
       ${today.map((sl) => {
         const early = nowT < today[0].min;
         const st = (sl === cur || (early && sl.type === 'dodo')) ? 'now' : (!early && sl.min < nowT ? 'past' : '');
-        return `<li class="ds ${st}" style="background:${sl.info.bg};${sl.info.dark ? 'color:#FBF6EE' : ''}">${icon(ICONS[sl.info.icon] || ICONS.clock, 24)}<span class="ds-t">${sl.time}</span></li>`;
+        const star = doneTodayFor(sl) ? '<span class="ds-star" aria-label="fait">★</span>' : '';
+        return `<li class="ds ${st} ${star ? 'done' : ''}" style="background:${sl.info.bg};${sl.info.dark ? 'color:#FBF6EE' : ''}">${star}${icon(ICONS[sl.info.icon] || ICONS.clock, 24)}<span class="ds-t">${sl.time}</span></li>`;
       }).join('')}
     </ol>
   </div>`;
 }
 
 ctx.screens.home = {
+  mount(el) {
+    clearInterval(handTimer);
+    handTimer = setInterval(() => {
+      const d = new Date(), hEl = el.querySelector('#cf-h'), mEl = el.querySelector('#cf-m');
+      if (!hEl) return;
+      hEl.setAttribute('transform', `rotate(${((d.getHours() % 12) + d.getMinutes() / 60) * 30} 60 60)`);
+      mEl.setAttribute('transform', `rotate(${d.getMinutes() * 6} 60 60)`);
+    }, 20000);
+  },
+  unmount() { clearInterval(handTimer); },
   render() {
     if (ctx.s.clock && ctx.s.clock.on) return clockHome();
     const c = ctx.s.child, p = pal();
@@ -72,18 +120,7 @@ ctx.screens.home = {
       ${parentCorner(p.bg)}
       <h1 class="hello">Coucou ${esc(c.name)} !</h1>
       <div class="home-main">
-        <div class="home-animal">${animalSVG(c.animal, { palette: c.color, size: 340, cls: 'bob', label: ANIMALS[c.animal].label })}</div>
-        <div class="home-actions">
-          <button type="button" class="big-btn light" data-act="free-stories">
-            <span class="big-ico" style="background:#E6E3FA">${icon(ICONS.histoire, 44)}</span><span>Mes histoires</span>
-          </button>
-          <button type="button" class="big-btn dark ${ritualSoon && !napTime ? 'pulse' : ''}" data-act="start-ritual" data-v="soir">
-            <span class="big-ico" style="background:#2E3270;color:#F5C451">${icon(ICONS.nuit, 44)}</span><span>Au dodo !</span>
-          </button>
-          ${sc.nap.on ? `<button type="button" class="big-btn nap ${napTime ? 'pulse' : ''}" data-act="start-ritual" data-v="sieste">
-            <span class="big-ico" style="background:#3BA776;color:#fff">${icon(ICONS.calme, 40)}</span><span>La sieste</span>
-          </button>` : ''}
-        </div>
+        <div class="home-animal">${animalSVG('hibou', { size: 340, cls: 'bob', label: 'Hibou' })}</div>
       </div>
       <div class="ritual-strip" aria-label="Le rituel">
         <span class="strip-label">${napTime ? 'Sieste' : 'Ce soir'}</span>
@@ -97,6 +134,9 @@ ctx.actions['start-ritual'] = (b) => startRitual(b.dataset.v);
 ctx.actions['free-stories'] = () => { ctx.ritual = null; ctx.free = { chosen: [] }; go('pick', { max: 3, free: true }); };
 
 // ---------- Choix des histoires ----------
+// La longueur se lit sans savoir lire : 1, 2 ou 3 petites lunes.
+const lenLevel = (m) => ({ courte: 1, moyenne: 2, longue: 3 })[storyLength(m).id];
+const moons = (n) => `<span class="moons" aria-hidden="true">${'<i></i>'.repeat(n)}</span>`;
 let pickState = { sel: [], tab: 'toutes' };
 ctx.screens.pick = {
   render(p) {
@@ -110,7 +150,8 @@ ctx.screens.pick = {
         const first = stories.find((s) => s.id === pl.storyIds[0]) || stories[0];
         return { id: 'pl:' + pl.id, title: pl.name, animal: first.animal, bg: '#2E3270', voice: `${pl.storyIds.length} histoires`, pl };
       });
-    } else items = tab === 'famille' ? family : stories;
+    } else if (['courte', 'moyenne', 'longue'].includes(tab)) items = stories.filter((x) => x.minutes && storyLength(x.minutes).id === tab);
+    else items = tab === 'famille' ? family : stories;
     const sel = pickState.sel;
     const isPl = sel.length === 1 && sel[0].startsWith('pl:');
     const count = isPl ? max : sel.length;
@@ -123,17 +164,17 @@ ctx.screens.pick = {
         <div class="slots" aria-label="${count} sur ${max}">${Array.from({ length: max }, (_, i) => `<span class="${i < count ? 'on' : ''}" style="${i < count ? `background:${pal().body}` : ''}"></span>`).join('')}<strong>${count} sur ${max}</strong></div>
       </div>
       <div class="tabs">
-        ${[['toutes', 'Toutes'], ['famille', 'Voix de la famille'], ['playlists', 'Playlists']].map(([id, l]) => `<button type="button" class="tab ${tab === id ? 'sel' : ''}" aria-pressed="${tab === id}" data-act="pick-tab" data-v="${id}">${l}</button>`).join('')}
+        ${[['toutes', 'Toutes'], ['courte', moons(1) + ' Petites'], ['moyenne', moons(2) + ' Moyennes'], ['longue', moons(3) + ' Longues'], ['famille', 'Voix de la famille'], ['playlists', 'Playlists']].map(([id, l]) => `<button type="button" class="tab ${tab === id ? 'sel' : ''}" aria-pressed="${tab === id}" data-act="pick-tab" data-v="${id}">${l}</button>`).join('')}
       </div>
       <div class="story-grid">
         ${items.length ? items.map((s) => {
           const idx = sel.indexOf(s.id);
-          const a = s.animal || c.animal;
-          const colors = (s.selfColor || a === c.animal) ? PALETTES[c.color] : PALETTES[ANIMALS[a] ? ANIMALS[a].palette : 'corail'];
+          const a = s.animal || 'hibou';
           return `<button type="button" class="story-card ${idx >= 0 ? 'sel' : ''}" style="${idx >= 0 ? `border-color:${pal().body}` : ''}" aria-pressed="${idx >= 0}" data-act="pick-story" data-v="${esc(s.id)}" data-max="${max}">
-            <span class="thumb" style="background:${s.bg}">${animalSVG(a, { colors, size: 116 })}
+            <span class="thumb" style="background:${s.bg}">${animalSVG(a, { size: 116 })}
               ${idx >= 0 ? `<span class="order" style="background:${pal().body}">${isPl ? icon(ICONS.check, 22) : idx + 1}</span>` : ''}
-              <span class="voice-tag">${icon(ICONS.mic, 14)}${esc(s.voice)}</span></span>
+              <span class="voice-tag">${icon(ICONS.mic, 14)}${esc(s.voice)}</span>
+              ${s.minutes ? `<span class="len-tag len-${storyLength(s.minutes).id}" aria-label="Environ ${s.minutes} minutes">${moons(lenLevel(s.minutes))}<b>${s.minutes} min</b></span>` : ''}</span>
             <span class="story-title">${esc(s.title)}</span>
           </button>`;
         }).join('') : `<p class="empty">${tab === 'famille' ? 'Pas encore d’histoire enregistrée par la famille.' : 'Aucune playlist pour l’instant.'}</p>`}
@@ -181,14 +222,13 @@ ctx.screens.player = {
     if (!story) return '<div class="screen night-black"></div>';
     const next = stories.find((s) => s.id === chosen[p.i + 1]);
     const c = ctx.s.child;
-    const colorsFor = (s) => (s.selfColor || s.animal === c.animal) ? PALETTES[c.color] : PALETTES[ANIMALS[s.animal] ? ANIMALS[s.animal].palette : 'corail'];
     return `<div class="screen child player">
       ${parentCorner('#221A30', '#D9A93F', 0.35)}
-      <div class="player-art">${animalSVG(story.animal, { colors: colorsFor(story), size: 300, cls: 'dim' })}</div>
+      <div class="player-art">${animalSVG(story.animal || 'hibou', { size: 300, cls: 'breathe' })}</div>
       <div class="player-info">
         <span class="muted-warm">Histoire ${p.i + 1} sur ${chosen.length}</span>
         <h1>${esc(story.title)}</h1>
-        <span class="voice-line">${icon(ICONS.mic, 22)}Racontée par ${esc(story.voice)}</span>
+        <span class="voice-line">${icon(ICONS.mic, 22)}Racontée par ${esc(story.voice)}${story.minutes ? ` · environ ${story.minutes} min` : ''}</span>
         <div class="bar"><div class="bar-fill" id="prog"></div></div>
         <div class="player-ctl">
           <button type="button" class="play-btn" data-act="player-toggle" aria-label="Pause" id="play-btn">${icon(ICONS.pause, 46, 'fill="#221A30" stroke="none"')}</button>
@@ -232,10 +272,9 @@ ctx.screens.moment = {
     return `<div class="screen child moment ${m.dark ? 'dark' : ''}" style="background:${m.bg}">
       ${parentCorner(m.bg)}
       <span class="moment-step">${r ? `Étape ${r.idx + 1} sur ${r.steps.length}` : ''}</span>
-      <div class="moment-animal">${(() => { const sc = sceneFor(p.id); return `${animalSVG(c.animal, { palette: c.color, size: 320, cls: sc.cls || 'breathe' })}${sc.html}`; })()}</div>
+      <div class="moment-animal">${sceneBlock(p.id, false, 320)}</div>
       <h1>${m.text}</h1>
       <div class="moment-time" id="mtime">${p.dur} min</div>
-      <button type="button" class="btn ghost-dark" data-act="moment-next">Étape suivante ${icon(ICONS.next, 22)}</button>
     </div>`;
   },
   mount(el, p) {
@@ -260,26 +299,26 @@ function nightProgress() {
   return Math.max(0, Math.min(1, (Date.now() - n.startedAt) / Math.max(1, n.wakeAt - n.startedAt)));
 }
 ctx.screens.night = {
-  render() {
-    const phase = nightPhase();
+  render(p = {}) {
+    const phase = p.phase || nightPhase();
     const c = ctx.s.child, n = ctx.s.night;
     if (phase === 'soon') {
       return `<div class="screen child soon" data-act="night-touch">
         ${parentCorner('#3B2F4F', '#C9834F', 0.3)}
         <div class="sun low" aria-hidden="true"></div>
-        <div class="soon-inner">${animalSVG(c.animal, { palette: c.color, size: 280, asleep: true })}
-          <h1>Le soleil se lève…</h1><p>${esc(ANIMALS[c.animal].art.replace(/^./, (x) => x.toUpperCase()))} dort encore un peu. Reste au lit, c'est bientôt.</p></div>
+        <div class="soon-inner">${animalSVG('hibou', { size: 280, asleep: true })}
+          <h1>Le soleil se lève…</h1><p>Le hibou dort encore un peu. Reste au lit, c'est bientôt.</p></div>
       </div>`;
     }
     const lvl = n.mode === 'off' ? 0 : (n.mode === 'faible' ? Math.min(n.level, 15) : Math.min(n.level, 40));
     const tint = { ambre: '#E39A47', rouge: '#D9786E', lune: '#E9C46A' }[n.tint] || '#E39A47';
     return `<div class="screen night" data-act="night-touch" aria-label="Nuit">
       ${parentCorner('#000', '#3A2A1A', 0.25)}
-      <div class="night-animal ${lvl ? 'visible' : ''}" id="night-animal" style="--lvl:${lvl ? Math.min(0.9, 0.45 + lvl / 80).toFixed(2) : 0}">
+      <div class="night-animal ${lvl ? 'visible' : ''} ${p.preview && !lvl ? 'touched' : ''}" id="night-animal" style="--lvl:${lvl ? Math.min(0.9, 0.45 + lvl / 80).toFixed(2) : 0}">
         <div class="night-glow" style="background:${tint}"></div>
-        ${animalSVG(c.animal, { colors: { body: '#7A4A33', belly: '#8E6E5C' }, size: 260, asleep: true })}
+        ${animalSVG('hibou', { colors: { body: '#7A4A33', belly: '#8E6E5C' }, size: 260, asleep: true })}
         <p class="night-text">C'est encore l'heure de dormir</p>
-        <p class="night-sub">Chut… ${esc(ANIMALS[c.animal].art)} dort encore. On reste dans son lit.</p>
+        <p class="night-sub">Chut… le hibou dort encore. On reste dans son lit.</p>
         <div class="night-track" aria-label="Le matin arrive bientôt">
           ${moonSVG(26, '#000', '#6E5646')}
           <span class="nt-bar"><span style="width:${Math.round(nightProgress() * 100)}%"></span></span>
@@ -317,9 +356,9 @@ ctx.screens.wake = {
     return `<div class="screen child wake anim-${anim}" style="background:${anim === 'coucou' ? pal().bg : '#FDE7B0'}">
       ${parentCorner('#FDE7B0')}
       ${anim !== 'coucou' ? '<div class="sun rise" aria-hidden="true"></div>' : ''}
-      <div class="wake-inner">${animalSVG(c.animal, { palette: c.color, size: 320, cls: anim === 'etire' ? 'stretch' : 'bob' })}
+      <div class="wake-inner">${animalSVG('coq', { size: 320, cls: anim === 'etire' ? 'stretch' : 'wiggle' })}
         <h1>Bonjour ${esc(c.name)} !</h1>
-        <p>${esc(ANIMALS[c.animal].art.replace(/^./, (x) => x.toUpperCase()))} est réveillé : tu peux te lever !</p>
+        <p>Cocorico ! Le coq est réveillé : tu peux te lever !</p>
         <button type="button" class="btn primary xl" data-act="wake-done">Bonne journée !</button>
       </div>
     </div>`;

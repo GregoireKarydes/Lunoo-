@@ -1,4 +1,4 @@
-// Premier lancement, sans inscription : prénom, compagnon, couleur, horaires.
+// Premier lancement, sans inscription : prénom, couleur, horaires. Les animaux suivent les moments de la journée.
 import { ctx, esc, go, save, render, toMin, fromMin, fmtDur, sleepCheck } from './ctx.js';
 import { ANIMALS, PALETTES, ICONS } from './data.js';
 import { animalSVG, moonSVG, icon } from './animal.js';
@@ -10,8 +10,8 @@ const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.p
 function head(step, back) {
   return `<div class="onb-head">
     <button type="button" class="link-btn" data-go="${back}">${icon(ICONS.back)}Retour</button>
-    <div class="progress" aria-label="Étape ${step} sur 4">${[1, 2, 3, 4].map((i) => `<span class="${i <= step ? 'done' : ''}"></span>`).join('')}</div>
-    <span class="muted step-n">${step} / 4</span>
+    <div class="progress" aria-label="Étape ${step} sur 3">${[1, 2, 3].map((i) => `<span class="${i <= step ? 'done' : ''}"></span>`).join('')}</div>
+    <span class="muted step-n">${step} / 3</span>
   </div>`;
 }
 
@@ -27,7 +27,8 @@ ctx.screens['onb-welcome'] = {
     return `<div class="screen onb onb-welcome">
       <div class="brand-big">${moonSVG(64)}<span>lunoo</span></div>
       <h1>Préparons le rituel du soir de votre enfant</h1>
-      <div class="animal-row">${Object.keys(ANIMALS).map((a) => `<span class="animal-tile">${animalSVG(a, { palette: ANIMALS[a].palette, size: 84 })}</span>`).join('')}</div>
+      <div class="animal-row">${['coq', 'ours', 'canard', 'castor', 'mouton', 'hibou'].map((a) => `<span class="animal-tile">${animalSVG(a, { size: 84, label: ANIMALS[a].label })}</span>`).join('')}</div>
+      <p class="lead muted-light">Un animal pour chaque moment : le coq au réveil, le canard au bain, le hibou pour dormir…</p>
       ${install}
       <button type="button" class="btn primary xl" data-go="onb-name">Commencer</button>
       <div class="ticks">
@@ -77,39 +78,19 @@ ctx.actions['onb-age'] = (b) => { ctx.s.child.name = document.getElementById('ch
 ctx.actions['onb-name-next'] = () => {
   const v = document.getElementById('child-name').value.trim();
   if (!v) { document.getElementById('child-name').focus(); return; }
-  ctx.s.child.name = v; save(); go('onb-animal');
+  ctx.s.child.name = v; save(); go('onb-color');
 };
-
-ctx.screens['onb-animal'] = {
-  render() {
-    const c = ctx.s.child;
-    return `<div class="screen onb">
-      ${head(2, 'onb-name')}
-      <div class="onb-body">
-        <h1>Quel compagnon pour ${esc(c.name)} ?</h1>
-        <p class="muted lead">Laissez-le choisir : c'est son ami du soir.</p>
-        <div class="grid5">${Object.entries(ANIMALS).map(([id, a]) => `
-          <button type="button" class="pick-card ${c.animal === id ? 'sel' : ''}" aria-pressed="${c.animal === id}" data-act="onb-animal" data-v="${id}">
-            ${animalSVG(id, { palette: a.palette, size: 140 })}<span class="pick-label">${a.label}</span>
-            <span class="check-badge">${icon(ICONS.check, 20)}</span>
-          </button>`).join('')}</div>
-      </div>
-      <div class="onb-foot end"><button type="button" class="btn primary" data-go="onb-color">Continuer</button></div>
-    </div>`;
-  },
-};
-ctx.actions['onb-animal'] = (b) => { ctx.s.child.animal = b.dataset.v; ctx.s.child.color = ANIMALS[b.dataset.v].palette; save(); render(); };
 
 ctx.screens['onb-color'] = {
   render() {
     const c = ctx.s.child, pal = PALETTES[c.color];
     return `<div class="screen onb">
-      ${head(3, 'onb-animal')}
+      ${head(2, 'onb-name')}
       <div class="onb-body row">
-        <div class="preview" style="background:${pal.bg}">${animalSVG(c.animal, { palette: c.color, size: 280 })}<span class="preview-hi">Coucou ${esc(c.name)} !</span></div>
+        <div class="preview" style="background:${pal.bg}">${animalSVG('hibou', { size: 280 })}<span class="preview-hi">Coucou ${esc(c.name)} !</span></div>
         <div class="col">
           <h1>Sa couleur préférée ?</h1>
-          <p class="muted lead">Elle colore son compagnon et son écran. Le soir, les teintes s'adoucissent toutes seules.</p>
+          <p class="muted lead">Elle colore son écran et ses boutons. Le soir, les teintes s'adoucissent toutes seules.</p>
           <div class="grid3">${Object.entries(PALETTES).map(([id, p]) => `
             <button type="button" class="color-card ${c.color === id ? 'sel' : ''}" aria-pressed="${c.color === id}" data-act="onb-color" data-v="${id}">
               <span class="dot" style="background:${p.body}"></span><span>${p.label}</span>
@@ -170,7 +151,7 @@ ctx.actions['nap-dur'] = (b) => { const n = ctx.s.schedule.nap; n.dur = Math.max
 ctx.screens['onb-hours'] = {
   render() {
     return `<div class="screen onb">
-      ${head(4, 'onb-color')}
+      ${head(3, 'onb-color')}
       <div class="onb-body"><h1>Quand ${esc(ctx.s.child.name)} dort-il ?</h1>${hoursBody()}</div>
       <div class="onb-foot end"><button type="button" class="btn primary" data-act="onb-finish">Terminer</button></div>
     </div>`;
@@ -183,11 +164,11 @@ ctx.screens['onb-ready'] = {
     const c = ctx.s.child, sc = ctx.s.schedule, pal = PALETTES[c.color];
     const corner = { hd: 'en haut à droite', hg: 'en haut à gauche', bd: 'en bas à droite', bg: 'en bas à gauche' }[ctx.s.access.corner];
     return `<div class="screen onb ready" style="background:${pal.bg}">
-      <div class="ready-animal">${animalSVG(c.animal, { palette: c.color, size: 300 })}</div>
+      <div class="ready-animal">${animalSVG('hibou', { size: 300 })}</div>
       <div class="col">
         <h1>Tout est prêt pour ${esc(c.name)} !</h1>
         <div class="chips static">
-          <span class="chip">${ANIMALS[c.animal].label} · ${pal.label}</span>
+          <span class="chip">Couleur ${pal.label.toLowerCase()}</span>
           <span class="chip">Rituel ${sc.ritualStart}</span>
           ${sc.nap.on ? `<span class="chip">Sieste ${sc.nap.start} · ${fmtDur(sc.nap.dur)}</span>` : ''}
           <span class="chip">Réveil ${sc.wakeWeek}</span>

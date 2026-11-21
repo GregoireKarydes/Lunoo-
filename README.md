@@ -72,3 +72,13 @@ js/studio.js      studio voix
 Les choix de conception s'appuient sur : Mindell et al. (Sleep, 2009 et 2015) sur les routines du coucher ; Hale et al. (J Fam Psychol, 2011) sur les routines avec lecture ; Akacem et al. (Physiol Rep, 2018) et Hartstein et al. (J Pineal Res, 2022) sur la lumière du soir ; Hugh et al. (Pediatrics, 2014) sur le volume des machines à bruit blanc ; les recommandations de durée de sommeil de l'American Academy of Sleep Medicine (Paruthi et al., 2016). Lunoo n'est pas un dispositif médical.
 
 Polices : Fredoka et Nunito, licence SIL Open Font License (voir `fonts/`).
+
+## Version 1.3
+
+- **Un animal par moment** : coq au réveil, pingouin pour s'habiller, ourson au repas, renard pour l'école, chien pour jouer, lapin dehors, grenouille sous la douche, canard au bain, castor pour les dents, chat pour le calme et la sieste, mouton pour les histoires, hibou pour dormir. L'enfant ne choisit plus d'animal.
+- **« C'est fait ! »** : seul bouton de l'écran de l'enfant. Confettis, animal qui saute et bravo dit au prénom, avec des phrases variées et bienveillantes. Une fois par moment et par jour, étoile sur la frise de la journée. Minuteur de 2 minutes pour les dents. Option « vérifié par un adulte » (appui long de 2 s). Le parent voit et peut annuler les validations du jour (Horloge).
+- **Réservé aux parents** : passer au moment suivant, afficher un autre moment, lancer les histoires, avancer le rituel (tableau de bord de l'espace parent).
+- **Horloge à aiguilles** : la part colorée montre le temps qui reste avant le prochain moment.
+- **Écran toujours allumé** : Wake Lock, ou vidéo muette en boucle si le navigateur le refuse (`assets/awake.mp4`).
+- **Animations** dans l'espace parent : tous les moments et écrans spéciaux, en vignettes et en plein écran.
+- **16 histoires** de 1 à 10 minutes, durée affichée avec 1 à 3 lunes, et une ambiance sonore générée sous la voix (pluie, vagues, grillons, vent, ruisseau, feu de bois, forêt, boîte à musique).

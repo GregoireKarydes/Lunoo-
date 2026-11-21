@@ -5,6 +5,7 @@ import { audioContext, chime } from './sound.js';
 import { currentSlot, isSleepTime, sleepStartedAt } from './clock.js';
 import './onboarding.js';
 import './child.js';
+import './preview.js';
 import { openParent } from './parent.js';
 import './studio.js';
 
@@ -93,6 +94,7 @@ async function clockTick() {
 
 // L'accueil se met à jour chaque minute (créneau en cours, bouton « Au dodo » qui clignote).
 let lastSlot = null;
+setInterval(() => { if (document.visibilityState === 'visible') keepAwake(); }, 60000); // si le système a relâché le verrou
 setInterval(async () => {
   if (await clockTick()) return;
   if (ctx.route === 'home') {
@@ -108,6 +110,7 @@ async function boot() {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
   ctx.s = await loadSettings();
+  keepAwake(); // l'écran reste allumé jour et nuit
   if (!ctx.s.onboarded) return go('onb-welcome');
 
   const night = await kv.get('night');

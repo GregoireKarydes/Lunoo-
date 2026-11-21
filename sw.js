@@ -1,6 +1,6 @@
 // Service worker : garde Lunoo disponible hors ligne.
 // Changez VERSION à chaque mise en ligne pour que les tablettes récupèrent la nouvelle version.
-const VERSION = 'lunoo-v1.2.0';
+const VERSION = 'lunoo-v1.3.0';
 const FILES = [
   './',
   'index.html',
@@ -19,6 +19,9 @@ const FILES = [
   'js/parent.js',
   'js/studio.js',
   'js/clock.js',
+  'js/rewards.js',
+  'js/preview.js',
+  'assets/awake.mp4',
   'fonts/fredoka-latin-500-normal.woff2',
   'fonts/fredoka-latin-600-normal.woff2',
   'fonts/nunito-latin-400-normal.woff2',

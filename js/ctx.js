@@ -69,16 +69,39 @@ export function sleepCheck(s) {
   return { bed, night, nap, total, ok: total >= lo && total <= hi, ageTxt, rangeTxt };
 }
 
-// ---------- Wake Lock : garder l'écran actif (l'appli doit rester ouverte la nuit) ----------
-
+// ---------- Écran toujours allumé, jour et nuit ----------
+// 1) Wake Lock (Chrome, Safari récent). 2) Sinon, une vidéo muette de 3 s en boucle,
+// lancée au premier toucher : c'est ce qui empêche l'iPad de se verrouiller quand Wake Lock est refusé.
 let wakeLock = null;
+let awakeVideo = null;
+export const awakeState = { method: 'aucune' };
+
+function videoFallback() {
+  if (!awakeVideo) {
+    awakeVideo = document.createElement('video');
+    awakeVideo.setAttribute('playsinline', '');
+    awakeVideo.setAttribute('muted', '');
+    awakeVideo.muted = true;
+    awakeVideo.loop = true;
+    awakeVideo.src = 'assets/awake.mp4';
+    awakeVideo.style.cssText = 'position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:.01;pointer-events:none;z-index:-1';
+    document.body.appendChild(awakeVideo);
+  }
+  if (awakeVideo.paused) awakeVideo.play().then(() => { awakeState.method = 'vidéo'; }).catch(() => {});
+}
+
 export async function keepAwake() {
+  if (wakeLock) return;
   try {
-    if ('wakeLock' in navigator && !wakeLock) {
+    if ('wakeLock' in navigator) {
       wakeLock = await navigator.wakeLock.request('screen');
-      wakeLock.addEventListener('release', () => { wakeLock = null; });
+      awakeState.method = 'wakelock';
+      wakeLock.addEventListener('release', () => { wakeLock = null; awakeState.method = 'aucune'; });
+      if (awakeVideo) awakeVideo.pause();
+      return;
     }
-  } catch (e) { /* refusé ou non pris en charge */ }
+  } catch (e) { /* refusé : on passe à la vidéo */ }
+  videoFallback();
 }
 
 // ---------- Rituel ----------

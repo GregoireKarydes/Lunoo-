@@ -58,8 +58,27 @@ export function currentSlot(s, now = new Date()) {
       next = daySlots(s, tom)[0]; nextStart = next.min + 1440;
     }
   }
+  // Un parent a choisi un autre moment (« passer au moment suivant ») : il reste affiché
+  // jusqu'au prochain changement prévu, une heure au plus.
+  const ov = s.clock && s.clock.override;
+  if (ov && now.getTime() < ov.until) {
+    const oi = today.findIndex((x) => x.id === ov.id);
+    if (oi >= 0) {
+      const nx = today[oi + 1] || next;
+      const p = Math.max(0, Math.min(1, (now.getTime() - ov.at) / Math.max(1, ov.until - ov.at)));
+      return { cur: today[oi], next: nx, today, idx: oi, progress: p, minutesLeft: Math.round((ov.until - now.getTime()) / 60000), override: true };
+    }
+  }
   const progress = Math.max(0, Math.min(1, (t - start) / Math.max(1, nextStart - start)));
   return { cur, next, today, idx, progress, minutesLeft: nextStart - t };
+}
+
+/** Le parent affiche un autre moment maintenant (jusqu'au prochain changement prévu, 1 h au plus). */
+export function setOverride(s, slotId, now = new Date()) {
+  if (s.clock.override) delete s.clock.override;
+  const nat = currentSlot(s, now);
+  const until = now.getTime() + Math.max(5, Math.min(60, nat.minutesLeft)) * 60000;
+  s.clock.override = { id: slotId, at: now.getTime(), until };
 }
 
 /** Heure (ms) à laquelle la période de sommeil en cours a commencé. */

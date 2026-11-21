@@ -15,7 +15,22 @@ export const ANIMALS = {
   lapin: { label: 'Lapin', art: 'le lapin', de: 'du lapin', palette: 'ciel' },
   ours: { label: 'Ourson', art: "l'ourson", de: "de l'ourson", palette: 'miel' },
   chat: { label: 'Chat', art: 'le chat', de: 'du chat', palette: 'menthe' },
+  canard: { label: 'Canard', art: 'le canard', de: 'du canard', colors: { body: '#F7C948', belly: '#F2994A' } },
+  coq: { label: 'Coq', art: 'le coq', de: 'du coq', colors: { body: '#F08A4B', belly: '#FFE9D6' } },
+  grenouille: { label: 'Grenouille', art: 'la grenouille', de: 'de la grenouille', colors: { body: '#5FB85A', belly: '#C8EBB0' } },
+  castor: { label: 'Castor', art: 'le castor', de: 'du castor', colors: { body: '#A0673F', belly: '#E8C9A6' } },
+  pingouin: { label: 'Pingouin', art: 'le pingouin', de: 'du pingouin', colors: { body: '#2F3550', belly: '#F4F1EA' } },
+  chien: { label: 'Chien', art: 'le chien', de: 'du chien', colors: { body: '#D9A066', belly: '#F6E3C8' } },
+  mouton: { label: 'Mouton', art: 'le mouton', de: 'du mouton', colors: { body: '#5B4B45', belly: '#F7F3EC' }, lid: '#F7F3EC' },
 };
+
+// Chaque moment a son animal : l'enfant le reconnaît d'un coup d'œil, même sans lire.
+export const MOMENT_ANIMALS = {
+  reveil: 'coq', manger: 'ours', douche: 'grenouille', bain: 'canard', dents: 'castor',
+  habiller: 'pingouin', jeu: 'chien', ecole: 'renard', sortie: 'lapin', calme: 'chat',
+  histoire: 'mouton', sieste: 'chat', dodo: 'hibou', nuit: 'hibou', soon: 'hibou',
+};
+export const momentAnimal = (kind) => MOMENT_ANIMALS[kind] || 'hibou';
 
 export const MOMENTS = {
   jeu: { label: 'Jeu', bg: '#FCEBC0', dark: false, light: 1, text: 'On joue encore un peu !', icon: 'jeu' },
@@ -50,6 +65,11 @@ export const SOUNDS = {
   coeur: { label: 'Battements' },
   blanc: { label: 'Bruit blanc' },
   rose: { label: 'Bruit rose' },
+  nuit: { label: 'Grillons' },
+  vent: { label: 'Vent doux' },
+  ruisseau: { label: 'Ruisseau' },
+  feu: { label: 'Feu de bois' },
+  boite: { label: 'Boîte à musique' },
   aucun: { label: 'Silence' },
 };
 
@@ -88,12 +108,14 @@ export const ICONS = {
 };
 
 // Histoires fournies : des textes originaux, lus par la voix de la tablette
-// tant que personne ne les a enregistrés. {P} = prénom, {A} = « le renard », {AL} = « Renard ».
+// tant que personne ne les a enregistrés. {P} = prénom, {A} = « le hibou », {AL} = « Hibou ».
+// amb = ambiance sonore jouée très bas sous la voix.
 export const BUILTIN_STORIES = [
   {
     id: 'lune',
+    amb: 'nuit',
     title: '{AL} et la lune',
-    animal: 'self',
+    animal: 'hibou',
     bg: '#2E3270',
     pages: [
       "Ce soir-là, la lune était toute ronde au-dessus de la maison de {P}.",
@@ -106,6 +128,7 @@ export const BUILTIN_STORIES = [
   },
   {
     id: 'doudou',
+    amb: 'boite',
     title: 'Lapin cherche son doudou',
     animal: 'lapin',
     bg: '#D6EEF7',
@@ -120,6 +143,7 @@ export const BUILTIN_STORIES = [
   },
   {
     id: 'cabane',
+    amb: 'pluie',
     title: "La cabane de l'ourson",
     animal: 'ours',
     bg: '#D7EFE3',
@@ -134,6 +158,7 @@ export const BUILTIN_STORIES = [
   },
   {
     id: 'hibou',
+    amb: 'foret',
     title: "Le hibou qui n'avait pas sommeil",
     animal: 'hibou',
     bg: '#E6E3FA',
@@ -148,6 +173,7 @@ export const BUILTIN_STORIES = [
   },
   {
     id: 'etoiles',
+    amb: 'vent',
     title: 'Chat et les étoiles filantes',
     animal: 'chat',
     bg: '#FCEBC0',
@@ -162,8 +188,9 @@ export const BUILTIN_STORIES = [
   },
   {
     id: 'voyage',
+    amb: 'vagues',
     title: 'Le grand voyage de {P}',
-    animal: 'self',
+    animal: 'hibou',
     bg: '#FFE0CC',
     pages: [
       "Ce soir, dit {P}, on part en voyage. {A} sauta dans son sac à dos, tout content.",
@@ -174,14 +201,264 @@ export const BUILTIN_STORIES = [
       "Et le grand voyage continua, cette fois dans les rêves. Bonne nuit, {P}.",
     ],
   },
+  {
+    id: 'canard-bulles',
+    amb: 'ruisseau',
+    title: 'Petit Canard et les bulles',
+    animal: 'canard',
+    bg: '#D6EEF7',
+    pages: [
+      "Petit Canard adorait l'heure du bain. Il glissait dans l'eau tiède, et plouf ! Il faisait la planche.",
+      "Ce soir, {P} versa un peu de savon dans la baignoire. Et voilà qu'arrivèrent des bulles, des centaines de bulles.",
+      "Une grosse bulle se posa sur le bec de Petit Canard. « Bonjour, la bulle ! » dit-il en louchant un peu.",
+      "Les bulles flottaient tout doucement, comme de petites lunes transparentes. Elles brillaient de toutes les couleurs.",
+      "Petit Canard souffla dessus, très doucement. Pfff… Les bulles s'envolèrent jusqu'au plafond, puis disparurent sans bruit.",
+      "L'eau devenait plus calme, et Petit Canard plus lourd de sommeil. Il se laissa sécher dans une serviette toute chaude.",
+      "« Merci pour le bain, {P}. » Et il s'endormit, propre et tout doux, en rêvant de bulles. Bonne nuit.",
+    ],
+  },
+  {
+    id: 'mouton-nuages',
+    amb: 'vent',
+    title: 'Mouton compte les nuages',
+    animal: 'mouton',
+    bg: '#E6E3FA',
+    pages: [
+      "Quand Mouton n'arrivait pas à dormir, il ne comptait pas les moutons. Il comptait les nuages.",
+      "Ce soir, il s'allongea dans l'herbe à côté de {P}. Le ciel était plein de petits nuages roses.",
+      "« Un nuage en forme de bateau… un. Un nuage en forme de chaussette… deux. »",
+      "« Trois, un nuage en forme de tartine. Quatre, un nuage qui ressemble à ton doudou. »",
+      "Le vent poussait les nuages très lentement, et Mouton respirait au même rythme. Inspire… souffle.",
+      "« Cinq… » Mouton bâilla. « Six… » {P} bâilla aussi. Les nuages devinrent tout gris, puis tout bleus.",
+      "Au septième nuage, Mouton dormait déjà, roulé en boule comme un gros coussin de laine. Bonne nuit.",
+    ],
+  },
+  {
+    id: 'coq-etoiles',
+    amb: 'nuit',
+    title: 'Le coq qui voulait voir les étoiles',
+    animal: 'coq',
+    bg: '#2E3270',
+    pages: [
+      "Le coq de la ferme était le premier levé, tous les matins. Cocorico ! C'était lui qui réveillait le soleil.",
+      "Mais il y avait une chose qu'il n'avait jamais vue : les étoiles. Car le coq se couchait toujours très tôt.",
+      "« Ce soir, je reste éveillé », décida-t-il. Il s'installa sur la barrière, à côté de {P}.",
+      "Le soleil se coucha. Le ciel devint orange, puis violet, puis bleu foncé. Le coq ouvrait de grands yeux.",
+      "Une étoile apparut. « Oh ! » Puis deux, puis dix, puis tellement qu'on ne pouvait plus les compter.",
+      "« Elles sont si belles », dit le coq. Mais ses paupières commençaient à tomber, toutes seules.",
+      "« Les étoiles brillent toute la nuit, lui dit {P}. Elles veillent pendant que tu dors, et toi, tu veilles le matin. »",
+      "Le coq trouva que c'était un très bon partage. Les étoiles pour la nuit, le coq pour le matin.",
+      "Il rentra dans le poulailler, gonfla ses plumes et se percha tout en haut.",
+      "« Bonne nuit les étoiles, à demain le soleil », chuchota-t-il. Et il s'endormit aussitôt. Bonne nuit, {P}.",
+    ],
+  },
+  {
+    id: 'castor-riviere',
+    amb: 'ruisseau',
+    title: 'Le castor et la rivière tranquille',
+    animal: 'castor',
+    bg: '#D7EFE3',
+    pages: [
+      "Au bord d'une rivière tranquille vivait un castor qui travaillait toute la journée. Il coupait des branches, il portait des cailloux, il construisait sa maison.",
+      "Ce soir-là, le soleil descendait derrière les arbres, et l'eau devenait toute dorée. Le castor posa sa dernière branche.",
+      "« Fini pour aujourd'hui », dit-il en s'étirant. Ses petites pattes étaient fatiguées, et sa queue plate aussi.",
+      "{P} était assis sur un rocher, les pieds au bord de l'eau. « Tu veux voir ma maison ? » demanda le castor.",
+      "Ils suivirent la rivière. L'eau chantait doucement entre les pierres : glou, glou, glou.",
+      "Une libellule bleue passa au-dessus d'eux, puis un poisson argenté fit un petit saut. Plouf.",
+      "La maison du castor était faite de branches bien serrées. À l'intérieur, il y avait un lit de mousse et de feuilles sèches.",
+      "« Pour bien dormir, expliqua le castor, il faut d'abord ranger sa journée. » Il posa ses outils un par un : la branche, le caillou, la feuille.",
+      "{P} fit pareil dans sa tête. Le jeu, rangé. Le repas, rangé. Le bain, rangé. Il ne restait plus que le calme.",
+      "Dehors, la rivière continuait de couler, toujours au même rythme, comme une berceuse qui ne s'arrête jamais.",
+      "Le castor se roula dans la mousse et ferma les yeux. « Tu entends ? murmura-t-il. La rivière dit bonne nuit. »",
+      "{P} écouta l'eau, glou, glou, et sentit ses paupières devenir lourdes, lourdes. Bonne nuit, petit castor. Bonne nuit, {P}.",
+    ],
+  },
+  {
+    id: 'grenouille-lucioles',
+    amb: 'nuit',
+    title: 'Grenouille et les lucioles',
+    animal: 'grenouille',
+    bg: '#2E2850',
+    pages: [
+      "Dans une mare cachée au fond du jardin vivait une petite grenouille verte qui avait peur du noir.",
+      "Chaque soir, quand le soleil se couchait, elle se cachait sous une grande feuille de nénuphar et ne bougeait plus.",
+      "Un soir, {P} vint s'asseoir au bord de la mare. « Pourquoi tu te caches ? » demanda-t-il doucement.",
+      "« Parce que la nuit, on ne voit plus rien, répondit la grenouille. Et quand on ne voit rien, on imagine des choses. »",
+      "{P} sourit. « Attends un peu. Regarde bien, là-bas, au-dessus des herbes. »",
+      "Une petite lumière jaune s'alluma. Puis une autre. Puis encore une autre. C'étaient des lucioles.",
+      "Elles dansaient lentement au-dessus de l'eau, comme des étoiles qui seraient descendues dire bonsoir.",
+      "La grenouille sortit un œil de sous sa feuille, puis l'autre œil, puis tout le bout de son nez.",
+      "« Elles sont là toutes les nuits ? » chuchota-t-elle. « Toutes les nuits d'été, dit {P}. La nuit n'est jamais tout à fait noire. »",
+      "Les grillons se mirent à chanter, cri-cri, cri-cri, et la grenouille ajouta un tout petit coâ, très doux.",
+      "Elle s'installa sur son nénuphar, juste sous les lucioles, et regarda leurs lumières clignoter.",
+      "Petit à petit, ses yeux se fermèrent. Elle n'avait plus peur : la nuit était pleine de petites lumières. Bonne nuit.",
+    ],
+  },
+  {
+    id: 'pingouin-aurore',
+    amb: 'vent',
+    title: "Le pingouin et l'aurore",
+    animal: 'pingouin',
+    bg: '#D3E6F7',
+    pages: [
+      "Tout au bout du monde, là où la neige ne fond jamais, vivait un petit pingouin qui portait toujours un nœud papillon rouge.",
+      "Ce soir, le vent soufflait doucement sur la banquise. Fffiiou… Fffiiou… Le petit pingouin avait froid aux ailes.",
+      "{P} lui tendit une écharpe toute douce. « Tiens, pour te tenir chaud. » Le pingouin l'enroula trois fois autour de son cou.",
+      "« Merci, dit-il. Tu veux voir quelque chose de magique ? Il faut juste attendre que le ciel devienne noir. »",
+      "Ils s'assirent l'un contre l'autre sur un bloc de glace. Le soleil disparut, et les premières étoiles apparurent.",
+      "Puis, tout doucement, le ciel se mit à onduler. Une grande lumière verte, comme un ruban, traversa la nuit.",
+      "« C'est une aurore », souffla le pingouin. Le ruban vert devint violet, puis rose, puis bleu.",
+      "Les couleurs bougeaient lentement, comme des vagues dans le ciel. Elles ne faisaient aucun bruit.",
+      "Toute la famille du pingouin arriva en se dandinant. Ils se serrèrent les uns contre les autres pour avoir chaud.",
+      "{P} était au milieu, bien au chaud entre les plumes. On entendait seulement le vent et les petites respirations.",
+      "Le petit pingouin glissa sa tête sous son aile. « C'est comme ça qu'on dort, chez nous », murmura-t-il.",
+      "Et sous les rubans de couleur, toute la banquise s'endormit, {P} aussi. Bonne nuit.",
+    ],
+  },
+  {
+    id: 'chien-feu',
+    amb: 'feu',
+    title: 'Le chien et le feu de camp',
+    animal: 'chien',
+    bg: '#FFE0CC',
+    pages: [
+      "Ce soir, {P} et son chien campaient au bord de la forêt. Ils avaient planté une petite tente orange.",
+      "Papa avait allumé un feu de camp, tout petit, entouré de pierres. Les flammes dansaient et faisaient crac, crac.",
+      "Le chien s'allongea devant le feu, le museau entre les pattes. Il sentait bon le bois et l'herbe.",
+      "« Raconte-moi une histoire », demanda le chien. {P} réfléchit, puis regarda les étincelles monter dans le ciel.",
+      "« Tu vois les étincelles ? dit {P}. Elles montent tout là-haut et deviennent des étoiles. »",
+      "Le chien leva le nez. Une étincelle s'envola, monta, monta… et une étoile s'alluma juste à côté de la lune.",
+      "« Encore une ! » dit le chien en remuant la queue. Mais il la remuait de plus en plus lentement.",
+      "Le feu devenait plus petit. Il ne restait que des braises rouges, qui brillaient comme des yeux tout doux.",
+      "Il faisait bon. Le chien posa sa tête sur les genoux de {P}, et {P} lui gratta derrière les oreilles.",
+      "Ils entrèrent dans la tente, se glissèrent dans le sac de couchage, et écoutèrent les dernières petites braises.",
+      "Crac… crac… puis plus rien. Juste la respiration du chien, et celle de {P}. Bonne nuit.",
+    ],
+  },
+  {
+    id: 'bateau-reves',
+    amb: 'vagues',
+    title: 'Le bateau des rêves',
+    animal: 'canard',
+    bg: '#E8F2FB',
+    pages: [
+      "Ce soir, quand {P} ferma les yeux, son lit se mit à bouger tout doucement, comme un bateau sur l'eau.",
+      "Il ouvrit un œil. Son lit était devenu un petit bateau en bois, avec une voile bleue toute gonflée de vent.",
+      "Au bout du bateau, un petit canard portait une casquette de capitaine. « Bienvenue à bord ! dit-il. Nous partons pour l'île des rêves. »",
+      "La mer était calme. Les vagues berçaient le bateau : elles montaient doucement, puis redescendaient doucement.",
+      "{P} s'allongea sur le pont et écouta le bruit de l'eau. Chhh… chhh… chhh… C'était le plus joli bruit du monde.",
+      "Le capitaine canard tenait la barre avec ses deux ailes. « Tout droit vers la lune », dit-il.",
+      "Au loin, une baleine grise sortit sa tête de l'eau. Elle souffla un grand jet, pfffff, puis replongea sans bruit.",
+      "« Elle nous dit bonsoir », expliqua le canard. {P} fit un signe de la main à la baleine.",
+      "Un peu plus loin, des poissons lumineux nageaient sous le bateau. Ils dessinaient des cercles bleus et verts dans l'eau noire.",
+      "Puis un vieux phare apparut sur un rocher. Sa lumière tournait lentement, éclairant la mer, puis le ciel, puis la mer.",
+      "« Le gardien du phare veille sur tous les bateaux de la nuit, dit le canard. Avec lui, on ne se perd jamais. »",
+      "Le vent devint plus doux. La voile se dégonfla un peu. Le bateau avançait maintenant très lentement.",
+      "Le capitaine canard sortit une couverture rayée et la posa sur {P}. « Pour le reste du voyage », dit-il.",
+      "Des mouettes passèrent au-dessus d'eux, en silence. Elles rentraient dormir, elles aussi.",
+      "La lune se reflétait dans l'eau, et le bateau suivait son chemin de lumière, comme sur une route d'argent.",
+      "Enfin, l'île des rêves apparut. Elle était toute ronde, couverte d'herbe douce et de fleurs qui brillaient un peu dans le noir.",
+      "Le bateau s'arrêta doucement sur le sable. Les vagues venaient chatouiller la coque : chhh… chhh…",
+      "Sur l'île, il y avait un grand arbre, et dans l'arbre, des hamacs pour tous les voyageurs fatigués.",
+      "{P} grimpa dans un hamac. Le canard s'installa dans le hamac d'à côté, sa casquette posée sur son ventre.",
+      "Le hamac se balançait au rythme des vagues. D'un côté… de l'autre… d'un côté… de l'autre…",
+      "« Demain, on reprendra la mer, murmura le capitaine canard. Mais ce soir, on dort. »",
+      "Et sur l'île des rêves, bercé par les vagues, {P} s'endormit tout doucement. Bonne nuit, moussaillon.",
+    ],
+  },
+  {
+    id: 'foret-chuchote',
+    amb: 'foret',
+    title: 'La forêt qui chuchote',
+    animal: 'hibou',
+    bg: '#2E2850',
+    pages: [
+      "Au cœur de la forêt, quand la nuit tombe, les arbres se mettent à chuchoter. Il faut tendre l'oreille pour les entendre.",
+      "Ce soir, le hibou était venu chercher {P}. « Viens, dit-il. Je vais te montrer comment la forêt s'endort. »",
+      "{P} mit ses chaussons et sa veste la plus douce. Ils marchèrent sur un petit chemin couvert de feuilles.",
+      "Le vent soufflait dans les branches : chhhh… C'était la voix des arbres. « Ils disent bonsoir », expliqua le hibou.",
+      "Le premier à aller se coucher fut l'écureuil. Il rangea sa dernière noisette dans un trou de l'arbre, puis s'enroula dans sa queue.",
+      "« Bonne nuit, l'écureuil », chuchota {P}. L'écureuil ouvrit un œil, fit un petit sourire, et le referma.",
+      "Plus loin, sous les fougères, une famille de lapins se serrait dans son terrier. Les petits bâillaient l'un après l'autre.",
+      "Le hibou se pencha. « Un… deux… trois… quatre lapins. Tout le monde est là. Bonne nuit, les lapins. »",
+      "Ils passèrent devant le grand chêne, le plus vieux de la forêt. Son tronc était si large qu'il fallait dix enfants pour en faire le tour.",
+      "« Le chêne a vu passer mille nuits, dit le hibou. Il sait que chaque nuit finit toujours par un matin. »",
+      "Près de la clairière, le renard rentrait chez lui. Il marchait sans faire de bruit, sur le bout de ses pattes.",
+      "Il fit un clin d'œil à {P} et disparut dans son terrier, sa grande queue rousse enroulée autour de lui.",
+      "Au bord du ruisseau, la biche et son faon étaient déjà couchés dans l'herbe. Le faon dormait, la tête contre sa maman.",
+      "{P} marchait de plus en plus lentement. Ses pieds étaient lourds, et ses yeux aussi.",
+      "Le hibou s'en aperçut. « Il ne reste plus qu'une personne à coucher dans la forêt, dit-il. Devine qui ? »",
+      "{P} sourit. « C'est moi ? » « C'est toi », répondit le hibou en ouvrant ses grandes ailes.",
+      "Il le conduisit jusqu'à un nid de mousse, au pied d'un arbre, tout tapissé de plumes et de feuilles douces.",
+      "{P} s'y allongea. Au-dessus de lui, entre les branches, les étoiles s'allumaient une à une.",
+      "Les arbres chuchotaient toujours : chhhh… chhhh… Ils racontaient la journée, puis ils se taisaient doucement.",
+      "Le hibou se percha sur une branche, juste au-dessus du nid. « Moi, je veille, dit-il. Les hiboux veillent toute la nuit. »",
+      "« Hou… hou… » chanta-t-il tout bas. C'était la plus douce berceuse de la forêt.",
+      "Et dans la forêt endormie, {P} s'endormit à son tour, bien au chaud, pendant que le hibou veillait. Bonne nuit.",
+    ],
+  },
+  {
+    id: 'train-reves',
+    amb: 'pluie',
+    title: 'Le train de nuit des animaux',
+    animal: 'mouton',
+    bg: '#2E3270',
+    pages: [
+      "Il était une fois un petit train qui ne roulait que la nuit. Il s'appelait le train de nuit des animaux, et il passait juste derrière la maison de {P}.",
+      "Ce soir, {P} entendit un petit sifflet très doux : tuuut… tuuut… Il regarda par la fenêtre. Le train était arrêté au bout du jardin, toutes ses fenêtres allumées en jaune.",
+      "Sur le quai, un mouton en casquette tenait une lanterne. « Bonsoir, {P}, dit-il. Je suis le contrôleur. Il te reste une place, si tu veux voyager avec nous. »",
+      "{P} prit son doudou et monta dans le train. Le premier wagon était tout en bois, avec des banquettes rouges et des petits rideaux à fleurs.",
+      "Dehors, il commençait à pleuvoir. Les gouttes tapaient sur le toit du wagon : tic, tic, tic. Mais à l'intérieur, il faisait bon et chaud.",
+      "Le train démarra lentement. Tchou… tchou… Il traversa le jardin, puis le village endormi, où toutes les maisons avaient éteint leurs lumières.",
+      "Dans le premier wagon voyageait une famille de lapins. La maman lapin tricotait une écharpe très longue, et les petits lapins dormaient déjà, empilés comme des coussins.",
+      "« Où allez-vous ? » demanda {P} à voix basse. « À la gare des Rêves, répondit la maman lapin. Comme tout le monde dans ce train. »",
+      "Le contrôleur mouton passa dans l'allée. Il ne vérifiait pas les billets : il distribuait des couvertures, une pour chaque voyageur.",
+      "{P} s'enveloppa dans la sienne. Elle était bleue, avec des petites lunes brodées dessus, et elle sentait la lavande.",
+      "Le train entra dans une grande forêt. Par la fenêtre, on voyait passer des sapins noirs, et parfois deux petits yeux qui brillaient : un renard qui regardait passer le train.",
+      "Dans le deuxième wagon, un ours lisait le journal avec de toutes petites lunettes. Il bâilla si fort que ses lunettes glissèrent sur son museau.",
+      "« Pardon, dit l'ours en riant tout bas. C'est le train. Il berce tellement bien qu'on ne peut pas s'empêcher de bâiller. »",
+      "C'était vrai. Le train faisait un petit balancement régulier, d'un côté puis de l'autre, et ses roues chantaient : ta-tam, ta-tam, ta-tam.",
+      "{P} se mit à compter les ta-tam. Un, deux, trois… À dix, il bâilla lui aussi. L'ours lui fit un clin d'œil.",
+      "Le train sortit de la forêt et longea un grand lac. La pluie s'était arrêtée, et la lune se reflétait dans l'eau, toute ronde et toute calme.",
+      "Sur le lac, des canards dormaient, la tête sous l'aile. Ils flottaient doucement, comme de petits bateaux attachés à la lune.",
+      "Le contrôleur mouton s'assit à côté de {P}. « Tu veux visiter le wagon des étoiles ? chuchota-t-il. C'est le plus beau du train. »",
+      "Ils traversèrent le wagon des lapins, puis celui de l'ours, en marchant sur la pointe des pieds pour ne réveiller personne.",
+      "Le wagon des étoiles avait un toit tout en verre. Allongé sur des coussins, on pouvait regarder le ciel comme dans un lit.",
+      "Un vieux hibou y était installé. Il montrait les étoiles avec le bout de son aile. « Celle-ci, c'est l'étoile du berger. Elle s'allume toujours la première. »",
+      "« Et celles-là, toutes ensemble, on les appelle la Grande Ourse. On dirait une grande casserole posée dans le ciel. »",
+      "{P} s'allongea sur un coussin. Les étoiles défilaient doucement au-dessus de lui, pendant que le train continuait son chemin.",
+      "Le hibou baissa la voix. « Tu sais pourquoi ce train roule la nuit ? Parce que c'est la nuit que les enfants grandissent, et qu'il faut les emmener là où on se repose le mieux. »",
+      "Le train monta une petite colline, très lentement. Puis il redescendit de l'autre côté, encore plus lentement.",
+      "On ne voyait presque plus rien dehors. Juste quelques lumières très loin, et les étoiles, et la lune qui suivait le train comme une amie.",
+      "Dans le wagon, tout le monde s'endormait. Le hibou fermait un œil, puis l'autre. Le contrôleur mouton ronflait tout doucement, sa casquette sur les yeux.",
+      "{P} sentait ses bras devenir lourds, et ses jambes aussi. Sa respiration devenait lente, lente, au rythme des roues : ta-tam… ta-tam…",
+      "Enfin, le train ralentit. Un petit panneau apparut dans la nuit : Gare des Rêves. Le sifflet fit un dernier tuuut, si doux qu'on l'entendit à peine.",
+      "Sur le quai de la gare des Rêves, il n'y avait pas de bancs. Il y avait des lits. Des centaines de lits moelleux, alignés sous les étoiles.",
+      "Les lapins se couchèrent dans un grand lit rond. L'ours s'installa dans un lit à sa taille, avec ses petites lunettes posées à côté.",
+      "Le contrôleur mouton accompagna {P} jusqu'à un lit qui ressemblait exactement au sien. « Voilà ta place, dit-il. Tu peux dormir jusqu'au matin. »",
+      "{P} se glissa sous la couverture aux petites lunes. Le mouton remonta la couverture jusqu'à son menton.",
+      "« Demain matin, le train te ramènera chez toi, avant même que le coq ne chante, promit le mouton. Et tu te réveilleras dans ta chambre, tout reposé. »",
+      "Au loin, le petit train s'endormait lui aussi, ses fenêtres éteintes une à une. Le ciel était calme, la lune veillait.",
+      "Et sur le quai de la gare des Rêves, entouré de tous les animaux endormis, {P} ferma les yeux et s'endormit à son tour. Bonne nuit.",
+    ],
+  },
 ];
 
 export function storyText(t, child) {
-  const a = ANIMALS[child.animal] || ANIMALS.renard;
+  const a = ANIMALS.hibou;
   return t
     .replaceAll('{P}', child.name || 'mon petit')
     .replaceAll('{AL}', a.label)
     .replaceAll('{A}', a.art);
+}
+
+// Durée estimée (voix de la tablette, débit lent) et catégorie de longueur.
+export function storyMinutes(pages) {
+  const words = pages.join(' ').split(/\s+/).length;
+  return Math.max(1, Math.round(words / 100 + pages.length * 1.2 / 60));
+}
+export function storyLength(min) {
+  return min <= 2 ? { id: 'courte', label: 'Courte' } : (min <= 4 ? { id: 'moyenne', label: 'Moyenne' } : { id: 'longue', label: 'Longue' });
 }
 
 // Met une majuscule en début de phrase après remplacement.

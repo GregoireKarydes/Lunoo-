@@ -60,7 +60,7 @@ export function defaultSettings() {
   return {
     version: 1,
     onboarded: false,
-    child: { name: '', age: 4, animal: 'renard', color: 'corail', character: 'doux' },
+    child: { name: '', age: 4, animal: 'hibou', color: 'corail', character: 'doux' },
     schedule: {
       ritualStart: '19:00',
       wakeWeek: '7:00',
@@ -81,7 +81,8 @@ export function defaultSettings() {
         { id: 'nuit', on: true, dur: 0 },
       ],
     },
-    stories: { choose: 2, napChoose: 1, mode: 'choice', playlistId: null },
+    stories: { choose: 2, napChoose: 1, mode: 'choice', playlistId: null, ambience: true },
+    rewards: { on: true, adult: false, done: {} }, // done : { 'AAAA-MM-JJ': { slotId: heure } }
     customStories: [], // { id, title, animal, voice, kind: 'import' }
     recordings: {},    // storyId -> { voice, pages: n, date }
     playlists: [],     // { id, name, storyIds: [] }

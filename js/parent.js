@@ -1,8 +1,9 @@
 // Espace parent : code, tableau de bord et réglages.
-import { ctx, esc, go, render, save, uid, fmtDur, sleepCheck, startRitual, endNight, toMin, fromMin } from './ctx.js';
-import { daySlots, currentSlot } from './clock.js';
-import { ANIMALS, PALETTES, ICONS, MOMENTS, SOUNDS, CLOCK_TYPES } from './data.js';
+import { ctx, esc, go, render, save, uid, fmtDur, sleepCheck, startRitual, nextStep, endNight, toMin, fromMin, awakeState } from './ctx.js';
+import { daySlots, currentSlot, setOverride } from './clock.js';
+import { ANIMALS, PALETTES, ICONS, MOMENTS, SOUNDS, CLOCK_TYPES, momentAnimal, storyMinutes, storyLength } from './data.js';
 import { animalSVG, icon } from './animal.js';
+import { REWARDABLE, dayKey } from './rewards.js';
 import { parentLayout, toggle, chips, stepper, toast, ask, confirmBox } from './ui.js';
 import { hoursBody } from './onboarding.js';
 import { allStories, impKey, recKey } from './narrator.js';
@@ -50,10 +51,37 @@ export function openParent() {
   if (ctx.s.access.pin) go('pin', { mode: 'enter' }); else go('p-home');
 }
 ctx.actions['exit-parent'] = () => {
-  if (ctx.night) go('night'); else go('home');
+  if (ctx.night) go('night');
+  else if (ctx.ritual) { ctx.ritual.idx -= 1; nextStep(); } // reprend l'étape en cours
+  else go('home');
 };
 
 // ---------- Tableau de bord ----------
+// Ce que seul un parent peut faire sur l'écran de l'enfant : passer un moment, lancer les histoires, avancer le rituel.
+function screenControl(s) {
+  const name = childName();
+  if (ctx.ritual) {
+    const st = ctx.ritual.steps[ctx.ritual.idx];
+    return `<div class="card alert-card"><div><strong>Rituel en cours${st ? ' : ' + MOMENTS[st.id].label.toLowerCase() : ''}</strong><span class="muted">Étape ${ctx.ritual.idx + 1} sur ${ctx.ritual.steps.length}</span></div>
+      <button type="button" class="btn ghost" data-act="exit-parent">Revenir</button><button type="button" class="btn primary" data-act="rit-next" style="background:var(--moon);color:var(--navy)">Étape suivante</button></div>`;
+  }
+  if (!s.clock.on || ctx.night) return '';
+  const { cur, next, today, override } = currentSlot(s);
+  return `<div class="card"><div class="card-row"><strong>L’écran de ${name} montre : ${esc(cur.info.label)}</strong>${override ? '<span class="tag fam">Choisi par vous</span>' : ''}</div>
+    <div class="toolbar">
+      <button type="button" class="btn primary sm" data-act="ov-next" data-v="${esc(next.id)}">${icon(ICONS.next, 18)}Passer à « ${esc(next.info.label)} »</button>
+      ${override ? '<button type="button" class="btn ghost sm" data-act="ov-clear">Revenir à l’horaire</button>' : ''}
+      <button type="button" class="btn ghost sm" data-act="free-stories">${icon(ICONS.histoire, 18)}Lancer des histoires</button>
+    </div>
+    <span class="label small">Ou afficher tout de suite :</span>
+    ${chips('ov-pick', today.filter((x) => x.type !== 'reveil').map((x) => [x.id, `${x.time} ${esc(x.info.label)}`]), cur.id)}
+    <span class="muted small">Le moment choisi reste affiché jusqu’au prochain changement prévu (1 h au plus). Sur son écran, ${name} peut seulement toucher « C’est fait ! ».</span></div>`;
+}
+ctx.actions['ov-next'] = (b) => { setOverride(ctx.s, b.dataset.v); save(); go('home'); };
+ctx.actions['ov-pick'] = (b) => { setOverride(ctx.s, b.dataset.v); save(); go('home'); };
+ctx.actions['ov-clear'] = () => { delete ctx.s.clock.override; save(); render(); };
+ctx.actions['rit-next'] = () => nextStep();
+
 ctx.screens['p-home'] = {
   render() {
     const s = ctx.s, c = s.child, sc = s.schedule, chk = sleepCheck(s);
@@ -62,13 +90,14 @@ ctx.screens['p-home'] = {
     const nightTxt = { off: 'Écran <strong>éteint</strong>', faible: 'Veilleuse <strong>très faible</strong>', on: 'Écran <strong>allumé</strong>' }[s.night.mode];
     const body = `
       <div class="ph-head">
-        <span class="avatar" style="background:${PALETTES[c.color].bg}">${animalSVG(c.animal, { palette: c.color, size: 54 })}</span>
+        <span class="avatar" style="background:${PALETTES[c.color].bg}">${animalSVG('hibou', { size: 54 })}</span>
         <div><strong class="h2">${childName()}, ${c.age} an${c.age > 1 ? 's' : ''}</strong><span class="muted">Tout est enregistré sur cette tablette et fonctionne hors ligne.</span></div>
       </div>
       ${ctx.night ? `<div class="card alert-card"><div><strong>${ctx.night.type === 'sieste' ? 'Sieste' : 'Nuit'} en cours</strong><span class="muted">Réveil prévu à ${new Date(ctx.night.wakeAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span></div>
         <button type="button" class="btn ghost" data-act="go-night">Revenir à la nuit</button><button type="button" class="btn danger" data-act="stop-night">Arrêter</button></div>` : ''}
+      ${screenControl(s)}
       <div class="grid2">
-        <button type="button" class="launch dark" data-act="launch" data-v="soir"><span class="launch-ico">${icon(ICONS.play, 28, 'fill="#1F2250" stroke="none"')}</span><span><strong>Lancer le rituel du soir</strong><span>À faire avec ${childName()}, ou le laisser appuyer sur « Au dodo »</span></span></button>
+        <button type="button" class="launch dark" data-act="launch" data-v="soir"><span class="launch-ico">${icon(ICONS.play, 28, 'fill="#1F2250" stroke="none"')}</span><span><strong>Lancer le rituel du soir</strong><span>Avec ${childName()} : les étapes du soir, les histoires, puis la nuit</span></span></button>
         <button type="button" class="launch green" data-act="launch" data-v="sieste" ${sc.nap.on ? '' : 'disabled'}><span class="launch-ico">${icon(ICONS.play, 28, 'fill="#fff" stroke="none"')}</span><span><strong>Lancer la sieste</strong><span>${sc.nap.on ? `${sc.nap.start} · ${fmtDur(sc.nap.dur)}` : 'Sieste désactivée'}</span></span></button>
       </div>
       <div class="grid2">
@@ -100,8 +129,6 @@ ctx.screens['p-child'] = {
           <div class="field grow2"><label for="pc-name">Prénom</label><input id="pc-name" class="input" type="text" value="${esc(c.name)}" maxlength="20" data-change="child-name"></div>
           <div class="field"><label for="pc-age">Âge</label><select id="pc-age" class="input" data-change="child-age">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((a) => `<option value="${a}" ${a === c.age ? 'selected' : ''}>${a} an${a > 1 ? 's' : ''}</option>`).join('')}</select></div>
         </div>
-        <span class="label">Compagnon</span>
-        <div class="grid5 small">${Object.entries(ANIMALS).map(([id, a]) => `<button type="button" class="pick-card sm ${c.animal === id ? 'sel' : ''}" aria-pressed="${c.animal === id}" data-act="pc-animal" data-v="${id}">${animalSVG(id, { palette: c.color, size: 64 })}<span>${a.label}</span></button>`).join('')}</div>
         <span class="label">Couleur</span>
         <div class="swatches">${Object.entries(PALETTES).map(([id, pp]) => `<button type="button" class="swatch ${c.color === id ? 'sel' : ''}" aria-pressed="${c.color === id}" aria-label="${pp.label}" data-act="pc-color" data-v="${id}" style="background:${pp.body}"></button>`).join('')}</div>
         <span class="label">Caractère de l'animal en journée</span>
@@ -109,13 +136,12 @@ ctx.screens['p-child'] = {
         <span class="muted">Le soir, il devient toujours calme.</span>
       </div>
       <div class="side-preview"><span class="label">Aperçu</span>
-        <div class="preview sm" style="background:${p.bg}">${animalSVG(c.animal, { palette: c.color, size: 180 })}<span class="preview-hi">Coucou ${childName()} !</span></div>
+        <div class="preview sm" style="background:${p.bg}">${animalSVG('hibou', { size: 180 })}<span class="preview-hi">Coucou ${childName()} !</span></div>
         <span class="muted">Les changements sont enregistrés tout de suite.</span></div>
     </div>`;
     return parentLayout('p-child', `Le profil de ${childName()}`, body);
   },
 };
-ctx.actions['pc-animal'] = (b) => { ctx.s.child.animal = b.dataset.v; save(); render(); };
 ctx.actions['pc-color'] = (b) => { ctx.s.child.color = b.dataset.v; save(); render(); };
 ctx.actions['pc-char'] = (b) => { ctx.s.child.character = b.dataset.v; save(); render(); };
 ctx.changes = ctx.changes || {};
@@ -172,7 +198,6 @@ ctx.screens['p-stories'] = {
     const items = storyTab === 'famille' ? stories.filter((x) => x.recorded) : (storyTab === 'todo' ? stories.filter((x) => !x.recorded) : stories);
     const pl = s.playlists.find((p) => p.id === openPl) || s.playlists[0] || null;
     if (pl) openPl = pl.id;
-    const colorsFor = (st) => (st.selfColor || st.animal === c.animal) ? PALETTES[c.color] : PALETTES[ANIMALS[st.animal] ? ANIMALS[st.animal].palette : 'corail'];
     const body = `<div class="split">
       <div class="col grow">
         <div class="toolbar">
@@ -183,8 +208,9 @@ ctx.screens['p-stories'] = {
         </div>
         <div class="pstory-grid">${items.map((st) => `
           <div class="pstory">
-            <div class="thumb sm" style="background:${st.bg}">${animalSVG(st.animal, { colors: colorsFor(st), size: 80 })}</div>
+            <div class="thumb sm" style="background:${st.bg}">${animalSVG(st.animal || 'hibou', { size: 80 })}</div>
             <span class="story-title sm">${esc(st.title)}</span>
+            ${st.minutes ? `<span class="muted small">${storyLength(st.minutes).label} · environ ${st.minutes} min${st.amb ? ' · ambiance ' + (SOUNDS[st.amb] ? SOUNDS[st.amb].label.toLowerCase() : 'forêt') : ''}</span>` : ''}
             <div class="pstory-foot">
               <span class="tag ${st.recorded ? 'fam' : ''}">${st.kind === 'import' ? 'Fichier importé' : (st.recorded ? 'Voix : ' + esc(st.voice) : 'Voix de la tablette')}</span>
               ${pl ? `<button type="button" class="icon-btn ${pl.storyIds.includes(st.id) ? 'in' : ''}" data-act="pl-toggle" data-v="${st.id}" aria-label="${pl.storyIds.includes(st.id) ? 'Retirer de' : 'Ajouter à'} la playlist">${icon(pl.storyIds.includes(st.id) ? ICONS.check : ICONS.plus, 20)}</button>` : ''}
@@ -198,6 +224,7 @@ ctx.screens['p-stories'] = {
       <aside class="aside">
         <span class="label">Ce soir, ${childName()} peut choisir</span>
         ${chips('st-choose', [[1, '1'], [2, '2'], [3, '3'], ['pl', 'Playlist']], s.stories.mode === 'playlist' ? 'pl' : s.stories.choose)}
+        <div class="row-setting"><div class="row-text"><span class="row-title">Ambiance sonore</span><span class="row-desc">Pluie, vagues, grillons… très bas sous la voix</span></div><button type="button" class="switch ${s.stories.ambience !== false ? 'on' : ''}" role="switch" aria-checked="${s.stories.ambience !== false}" aria-label="Ambiance sonore" data-act="st-amb"><span></span></button></div>
         <span class="muted small">Pour la sieste : ${s.stories.napChoose} histoire${s.stories.napChoose > 1 ? 's' : ''}. « Playlist » : la playlist choisie est lue telle quelle.</span>
         <hr>
         <div class="card-row"><span class="label">Playlists</span><button type="button" class="link-btn small" data-act="pl-new">${icon(ICONS.plus, 18)}Nouvelle</button></div>
@@ -221,7 +248,7 @@ ctx.screens['p-stories'] = {
       const voice = await ask('Qui raconte ?', 'Maman');
       const id = 'imp-' + uid();
       await audio.set(impKey(id), file);
-      ctx.s.customStories.push({ id, title, animal: ctx.s.child.animal, selfColor: true, voice: voice || 'Famille', kind: 'import', bg: '#FFE0CC' });
+      ctx.s.customStories.push({ id, title, animal: 'hibou', voice: voice || 'Famille', kind: 'import', bg: '#FFE0CC' });
       await save(); toast('Histoire ajoutée'); render();
     };
   },
@@ -303,6 +330,9 @@ ctx.screens['p-night'] = {
         ${toggle('night.touchShow', n.touchShow, `Si ${childName()} touche l’écran la nuit`, 'Son compagnon apparaît endormi pendant 10 s : « on reste au lit »')}
         ${toggle('night.fade', n.fade, 'Extinction progressive', 'La lumière baisse doucement pendant les histoires')}
       </div>
+      <div class="card"><strong>Écran toujours allumé, jour et nuit</strong>
+        <span>Lunoo empêche la tablette de se mettre en veille tant que l’appli est ouverte${awakeState.method === 'wakelock' ? ' (actif)' : (awakeState.method === 'vidéo' ? ' (actif, méthode de secours)' : ' (s’active au premier toucher)')}.</span>
+        <span class="muted small">Pour être tranquille : laissez la tablette branchée. Sur iPad, réglez aussi Réglages › Luminosité et affichage › Verrouillage automatique sur « Jamais ». Sur Android, mettez la mise en veille de l’écran au maximum.</span></div>
       <p class="muted small">Une appli web ne peut pas régler la luminosité de la tablette : baissez-la au minimum dans les réglages de l’appareil. Sur un écran LCD, le noir laisse passer un peu de lumière.</p>`;
     return parentLayout('p-night', 'La nuit, l’écran…', body);
   },
@@ -345,6 +375,7 @@ ctx.screens['p-sounds'] = {
 };
 ctx.actions['so-type'] = (b) => { ctx.s.sound.type = b.dataset.v; save(); if (ambiencePlaying()) startAmbience({ ...ctx.s.sound, dur: 1 }); render(); };
 ctx.actions['so-vol'] = (b) => { const so = ctx.s.sound; so.vol = Math.max(0, Math.min(so.cap, so.vol + Number(b.dataset.d))); save(); setAmbienceVolume(so); render(); };
+ctx.actions['st-amb'] = () => { ctx.s.stories.ambience = ctx.s.stories.ambience === false; save(); render(); };
 ctx.actions['so-dur'] = (b) => { ctx.s.sound.dur = Number(b.dataset.v); save(); render(); };
 ctx.actions['so-test'] = () => { if (ambiencePlaying()) stopAmbience(); else startAmbience({ ...ctx.s.sound, dur: 1 }); setTimeout(render, 50); };
 
@@ -450,6 +481,17 @@ ctx.actions['a-reset'] = async () => {
 };
 
 // ---------- Horloge intelligente ----------
+// Ce que l'enfant a validé aujourd'hui, avec l'heure. On peut annuler une validation.
+function rewardsToday(s) {
+  const today = daySlots(s, new Date()).filter((sl) => REWARDABLE.includes(sl.type));
+  if (!today.length) return '';
+  const d = s.rewards.done[dayKey()] || {};
+  return `<div class="card"><strong>Aujourd'hui</strong>
+    <div class="mini-chips">${today.map((sl) => `<span class="mini-chip rw ${d[sl.id] ? 'ok' : ''}" style="background:${sl.info.bg}">${sl.info.label} ${sl.time} : ${d[sl.id] ? `★ fait à ${d[sl.id]} <button type="button" class="link-btn small" data-act="rw-undo" data-v="${esc(sl.id)}">annuler</button>` : 'pas encore'}</span>`).join('')}</div>
+    <span class="muted small">Pas de points ni de classement : juste un bravo et une étoile sur la journée. Si ${childName()} appuie sans l’avoir fait, parlez-en simplement et annulez ici.</span></div>`;
+}
+ctx.actions['rw-undo'] = (b) => { const d = ctx.s.rewards.done[dayKey()]; if (d) delete d[b.dataset.v]; save(); render(); };
+
 ctx.screens['p-clock'] = {
   render() {
     const s = ctx.s, ck = s.clock, sc = s.schedule;
@@ -482,7 +524,10 @@ ctx.screens['p-clock'] = {
       <div class="card list">
         ${toggle('clock.on', ck.on, 'Horloge de la journée', `L’écran de ${childName()} montre le moment en cours : image, couleur et message changent tout seuls`)}
         ${toggle('clock.chime', ck.chime, 'Petit carillon à chaque changement', 'Un son très doux quand on passe au moment suivant')}
+        ${toggle('rewards.on', s.rewards.on, 'Bouton « C’est fait ! »', `${childName()} touche le bouton quand il a fini (s’habiller, manger, les dents…) : confettis et bravo à voix haute`)}
+        ${s.rewards.on ? toggle('rewards.adult', s.rewards.adult, 'Vérifié par un adulte', 'Avant la fête, un adulte regarde puis garde le doigt appuyé 2 secondes') : ''}
       </div>
+      ${s.rewards.on ? rewardsToday(s) : ''}
       ${ck.on ? `
       <div class="split">
         <div class="col">
@@ -492,7 +537,7 @@ ctx.screens['p-clock'] = {
           <div class="chips">${Object.entries(CLOCK_TYPES).filter(([id]) => id !== 'reveil' && id !== 'sieste').map(([id, t]) => `<button type="button" class="chip dashed" data-act="ck-add" data-v="${id}">${icon(ICONS[t.icon] || ICONS.clock, 18)}${t.label}</button>`).join('')}</div>
         </div>
         <div class="side-preview"><span class="label">En ce moment</span>
-          <div class="preview sm" style="background:${cur.info.bg};${cur.info.dark ? 'color:#FBF6EE' : ''}">${animalSVG(s.child.animal, { palette: s.child.color, size: 140, asleep: !!cur.info.asleep })}<span class="preview-say">${esc(cur.info.say)}</span></div>
+          <div class="preview sm" style="background:${cur.info.bg};${cur.info.dark ? 'color:#FBF6EE' : ''}">${animalSVG(momentAnimal(cur.type), { size: 140, asleep: !!cur.info.asleep })}<span class="preview-say">${esc(cur.info.say)}</span></div>
           ${hasDodo
             ? `<span class="muted small">Pendant « Dodo », l'écran passe tout seul en mode nuit jusqu'au réveil (${sc.wakeWeek} en semaine, ${sc.wakeWeekend} le week-end). Si ${childName()} se lève avant, il voit que c'est encore l'heure de dormir.</span>`
             : '<div class="warn-box small">Ajoutez un moment « Dodo » pour que l’écran passe tout seul en mode nuit.</div>'}
