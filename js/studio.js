@@ -41,7 +41,6 @@ ctx.screens['p-studio'] = {
         <div class="prompter">
           ${i > 0 ? `<p class="prev">${hl(pages[i - 1])}</p>` : ''}
           <p class="cur">${hl(pages[i])}</p>
-          ${i < pages.length - 1 ? `<p class="next">${hl(pages[i + 1])}</p>` : ''}
           <span class="muted-light small">Astuce : lisez lentement, à voix basse, comme au bord du lit.</span>
         </div>
         <div class="vu" aria-label="Niveau du micro"><span class="muted-light tiny">Niveau</span><div class="vu-bars" id="vu">${Array.from({ length: 12 }, () => '<span></span>').join('')}</div></div>
