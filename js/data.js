@@ -500,9 +500,9 @@ export const BUILTIN_STORIES = [
 export function storyText(t, child) {
   const a = ANIMALS.hibou;
   return t
-    .replaceAll('{P}', child.name || 'mon petit')
-    .replaceAll('{AL}', a.label)
-    .replaceAll('{A}', a.art);
+    .split('{P}').join(child.name || 'mon petit')
+    .split('{AL}').join(a.label)
+    .split('{A}').join(a.art);
 }
 
 // Durée estimée (voix de la tablette, débit lent) et catégorie de longueur.
@@ -620,7 +620,7 @@ export function momentTalk(cur, name, next, waiting = false) {
   const nx0 = typeof next === 'string' ? { type: next } : next;
   const type = sl.type, info = slotInfo(sl), custom = !!((sl.say || '').trim() || (type === 'perso'));
   const n = name || '';
-  const fill = (t) => t.replaceAll('{P}', n).replace(/\s+,/g, ',').replace(/^,\s*/, '');
+  const fill = (t) => t.split('{P}').join(n).replace(/\s+,/g, ',').replace(/^,\s*/, '');
   let main;
   if (waiting) main = `${DONE_SAY[type] || 'C’est fait !'} ${fill(pickOne(DONE_TALK))}`;
   else if (custom) main = n ? `${n}, ${info.say.charAt(0).toLowerCase()}${info.say.slice(1)}` : info.say;

@@ -125,6 +125,7 @@ function setRecUI(on) {
 ctx.actions['studio-rec'] = () => {
   if (!st || !st.stream) { toast('Le micro n’est pas disponible.'); return; }
   if (st.recording) { st.rec.stop(); return; }
+  if (!window.MediaRecorder) { toast('Cette tablette est trop ancienne pour enregistrer la voix (iOS 14.3 minimum). Les histoires sont lues par la voix de la tablette.'); return; }
   levels.length = 0;
   const mime = pickMime();
   st.rec = new MediaRecorder(st.stream, mime ? { mimeType: mime } : undefined);
