@@ -11,6 +11,8 @@ Lunoo transforme une tablette (ou un ancien téléphone) en compagnon du soir : 
 - **Sauvegarde** : export / import d'un fichier depuis l'espace parent.
 - **Sons générés en direct** (Web Audio) : pluie, vagues, ronron, battements, bruit blanc, bruit rose. Volume plafonné, arrêt automatique.
 - **Studio voix** : enregistrement page par page avec le micro de la tablette (MediaRecorder).
+- **Voix d’un proche** : un proche ouvre un lien (QR code ou SMS) sur son téléphone, enregistre une histoire et envoie un fichier que la tablette importe. Indispensable sur les vieux iPad (iOS 12) qui ne savent pas enregistrer.
+- **Vieilles tablettes** : `js/legacy.js` (ES5) rend Lunoo utilisable sur iPad sous iOS 12 (événements tactiles, `gap` flex, Blob.text). Le code des modules doit rester lisible par Safari 12 : pas de `?.`, `??`, `replaceAll`.
 - **Histoires fournies** : 6 textes originaux personnalisés avec le prénom et l'animal de l'enfant, lus par la voix de synthèse de la tablette tant que personne ne les a enregistrés.
 - **Import de sons** : un parent peut ajouter un fichier audio dont il a les droits.
 - **Horloge intelligente** : le parent règle les moments de la journée (réveil, s'habiller, manger, douche, dents, jeu, école, sieste, dodo…). L'écran de l'enfant change tout seul d'image, de couleur et de message, montre ce qui vient ensuite et toute la journée en pictogrammes. Pendant « Dodo », l'écran montre que c'est l'heure de dormir (si l'enfant se lève à 5 h, il le voit) ; la nuit ne se lance jamais toute seule : un parent garde le doigt sur « Lancer la nuit » (code si besoin), puis choisit histoires, son et lumière. Le week-end, les moments du matin sont décalés avec le réveil. On glisse les moments pour changer l'ordre (l'heure s'adapte), « École » peut devenir « Crèche » ou « Nounou », et chaque moment se personnalise (nom, phrase, pictogramme, animal, couleur) ; « Autre moment » permet d'en créer un qui n'est pas proposé.
@@ -67,6 +69,9 @@ js/onboarding.js  premier lancement
 js/child.js       écrans de l'enfant
 js/parent.js      espace parent
 js/studio.js      studio voix
+js/voix.js        voix d’un proche (lien, mode enregistreur sur téléphone, import)
+js/legacy.js      compatibilité iOS 12 (script classique ES5)
+js/vendor/        qrcode.js (Kazuhiko Arase, MIT)
 ```
 
 ## Sources sur le sommeil de l'enfant

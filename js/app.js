@@ -12,6 +12,9 @@ import { momentTalk } from './data.js';
 import { openParent } from './parent.js';
 import './studio.js';
 import './reorder.js';
+import './voix.js';
+import { remoteFromHash } from './voix.js';
+import { defaultSettings } from './store.js';
 
 ctx.root = document.getElementById('app');
 
@@ -139,6 +142,14 @@ async function boot() {
       if (ctx.night || ctx.ritual || ['player', 'brush'].includes(ctx.route)) document.addEventListener('visibilitychange', reload, { once: true });
       else reload();
     });
+  }
+  // Lien « voix d'un proche » ouvert sur un téléphone : mode enregistreur, sans toucher aux réglages.
+  const remote = remoteFromHash();
+  if (remote) {
+    ctx.remote = remote;
+    ctx.s = defaultSettings();
+    ctx.s.child.name = remote.child || 'l’enfant';
+    return go('rv-hello');
   }
   ctx.s = await loadSettings();
   keepAwake(); // l'écran reste allumé jour et nuit

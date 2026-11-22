@@ -6,11 +6,13 @@ import { audio } from './store.js';
 import { recKey } from './narrator.js';
 import { audioContext } from './sound.js';
 import { toast, ask } from './ui.js';
+import { isApple, remoteStudioDone } from './voix.js';
 
 let st = null; // { story, page, takes: Blob[], voice, stream, rec, chunks, analyser, raf, recording, startAt, audioEl }
 
 function pickMime() {
-  const types = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg;codecs=opus'];
+  // Sur Apple, le MP4 (AAC) est lu par toutes les tablettes, même les vieux iPad.
+  const types = isApple() ? ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'] : ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg;codecs=opus'];
   for (const t of types) if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) return t;
   return '';
 }
@@ -19,7 +21,7 @@ ctx.screens['p-studio'] = {
   render(p) {
     const story = BUILTIN_STORIES.find((s) => s.id === p.id);
     if (!story) return '<div class="screen"></div>';
-    if (!st || st.story.id !== story.id) st = { story, page: 0, takes: [], voice: (ctx.s.recordings[story.id] || {}).voice || '' };
+    if (!st || st.story.id !== story.id) st = { story, page: 0, takes: [], voice: ctx.remote ? ctx.remote.voice : ((ctx.s.recordings[story.id] || {}).voice || '') };
     const pages = story.pages, i = st.page, child = ctx.s.child;
     const hl = (t) => esc(storyPage(t, child))
       .replace(new RegExp(esc(child.name), 'g'), `<mark class="m-name">${esc(child.name)}</mark>`);
@@ -125,7 +127,7 @@ function setRecUI(on) {
 ctx.actions['studio-rec'] = () => {
   if (!st || !st.stream) { toast('Le micro n’est pas disponible.'); return; }
   if (st.recording) { st.rec.stop(); return; }
-  if (!window.MediaRecorder) { toast('Cette tablette est trop ancienne pour enregistrer la voix (iOS 14.3 minimum). Les histoires sont lues par la voix de la tablette.'); return; }
+  if (!window.MediaRecorder) { toast('Cette tablette ne peut pas enregistrer : passez par Histoires › Voix d’un proche.'); return; }
   levels.length = 0;
   const mime = pickMime();
   st.rec = new MediaRecorder(st.stream, mime ? { mimeType: mime } : undefined);
@@ -155,6 +157,13 @@ ctx.actions['studio-voice'] = async () => {
   if (v) { st.voice = v; go('p-studio', { id: st.story.id }); }
 };
 ctx.actions['studio-save'] = async () => {
+  if (ctx.remote) {
+    const story = st.story, takes = st.takes.slice();
+    ctx.remote.voice = st.voice || ctx.remote.voice;
+    stopStudio();
+    remoteStudioDone(story, takes);
+    return;
+  }
   const id = st.story.id;
   for (let k = 0; k < st.takes.length; k++) if (st.takes[k]) await audio.set(recKey(id, k), st.takes[k]);
   ctx.s.recordings[id] = { voice: st.voice || 'Famille', pages: st.story.pages.length, date: new Date().toISOString() };
@@ -162,11 +171,14 @@ ctx.actions['studio-save'] = async () => {
   toast('Histoire enregistrée !');
   closeStudio();
 };
-function closeStudio() {
+function stopStudio() {
   if (st && st.stream) st.stream.getTracks().forEach((t) => t.stop());
   if (st) cancelAnimationFrame(st.raf);
   st = null;
-  go('p-stories');
+}
+function closeStudio() {
+  stopStudio();
+  go(ctx.remote ? 'rv-pick' : 'p-stories');
 }
 ctx.actions['studio-close'] = () => {
   if (st && st.recording) st.rec.stop();

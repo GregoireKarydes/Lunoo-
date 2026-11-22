@@ -229,7 +229,9 @@ ctx.screens['p-stories'] = {
               ${pl ? `<button type="button" class="icon-btn ${pl.storyIds.includes(st.id) ? 'in' : ''}" data-act="pl-toggle" data-v="${st.id}" aria-label="${pl.storyIds.includes(st.id) ? 'Retirer de' : 'Ajouter à'} la playlist">${icon(pl.storyIds.includes(st.id) ? ICONS.check : ICONS.plus, 20)}</button>` : ''}
             </div>
             <div class="pstory-actions">
-              ${st.kind === 'builtin' ? `<button type="button" class="mini-btn rec" data-go="p-studio" data-p='{"id":"${st.id}"}'>${icon(ICONS.mic, 16)}${st.recorded ? 'Réenregistrer' : 'Enregistrer ma voix'}</button>` : ''}
+              ${st.kind === 'builtin' ? (window.MediaRecorder
+                ? `<button type="button" class="mini-btn rec" data-go="p-studio" data-p='{"id":"${st.id}"}'>${icon(ICONS.mic, 16)}${st.recorded ? 'Réenregistrer' : 'Enregistrer ma voix'}</button>`
+                : `<button type="button" class="mini-btn rec" data-go="p-voix">${icon(ICONS.mic, 16)}${st.recorded ? 'Changer la voix' : 'Faire enregistrer'}</button>`) : ''}
               ${st.recorded ? `<button type="button" class="mini-btn" data-act="st-delete" data-v="${st.id}" data-k="${st.kind}" aria-label="Supprimer la voix">${icon(ICONS.trash, 16)}</button>` : ''}
             </div>
           </div>`).join('')}</div>

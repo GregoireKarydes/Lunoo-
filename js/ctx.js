@@ -13,13 +13,14 @@ export const ctx = {
   actions: {},        // actions des boutons [data-act] : fn(bouton, événement)
   current: null,
   root: null,
+  remote: null,       // mode enregistreur (lien « voix d'un proche » ouvert sur un téléphone)
 };
 
 export const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
-export async function save() { await saveSettings(ctx.s); }
+export async function save() { if (!ctx.remote) await saveSettings(ctx.s); } // rien n'est gardé en mode enregistreur
 
 export function go(route, params = {}) {
   ctx.route = route;

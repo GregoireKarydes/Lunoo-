@@ -36,7 +36,7 @@ export function stepper(act, value, label) {
 const GROUPS = [
   { id: 'home', label: 'Accueil', icon: ICONS.home, pages: [['p-home', 'Accueil']] },
   { id: 'day', label: 'La journée', icon: ICONS.clock, pages: [['p-clock', 'La journée']] },
-  { id: 'stories', label: 'Histoires', icon: ICONS.histoire, pages: [['p-stories', 'Histoires']] },
+  { id: 'stories', label: 'Histoires', icon: ICONS.histoire, pages: [['p-stories', 'Histoires'], ['p-voix', 'Voix d’un proche']] },
   { id: 'night', label: 'La nuit', icon: ICONS.nuit, pages: [['p-night', 'Veilleuse'], ['p-sounds', 'Son pour dormir']] },
   { id: 'tablet', label: 'Tablette', icon: ICONS.lock, pages: [['p-child', 'Enfant'], ['p-access', 'Code et sauvegarde'], ['p-anim', 'Animations']] },
 ];
