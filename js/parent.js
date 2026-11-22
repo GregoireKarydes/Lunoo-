@@ -1,9 +1,10 @@
 // Espace parent : code, tableau de bord et réglages.
 import { ctx, esc, go, render, save, uid, fmtDur, sleepCheck, nextStep, launchNight, endNight, toMin, fromMin, awakeState } from './ctx.js';
-import { daySlots, currentSlot, setOverride } from './clock.js';
+import { daySlots, currentSlot, setOverride, moveSlot } from './clock.js';
+import { editMoment } from './moment-edit.js';
 import { ANIMALS, PALETTES, ICONS, MOMENTS, SOUNDS, CLOCK_TYPES, momentAnimal, storyMinutes, storyLength } from './data.js';
 import { animalSVG, icon } from './animal.js';
-import { REWARDABLE, dayKey } from './rewards.js';
+import { canDo, dayKey } from './rewards.js';
 import { parentLayout, toggle, chips, stepper, toast, ask, confirmBox } from './ui.js';
 import { skipStory, toggleStoryAmbience, sleepNow } from './child.js';
 import { bedPlaying } from './sound.js';
@@ -470,7 +471,7 @@ ctx.actions['a-reset'] = async () => {
 // ---------- Horloge intelligente ----------
 // Ce que l'enfant a validé aujourd'hui, avec l'heure. On peut annuler une validation.
 function rewardsToday(s) {
-  const today = daySlots(s, new Date()).filter((sl) => REWARDABLE.includes(sl.type));
+  const today = daySlots(s, new Date()).filter((sl) => canDo(sl));
   if (!today.length) return '';
   const d = s.rewards.done[dayKey()] || {};
   return `<div class="card"><strong>Aujourd'hui</strong>
@@ -486,8 +487,7 @@ ctx.screens['p-clock'] = {
     const ref = new Date(); while (ref.getDay() === 0 || ref.getDay() === 6) ref.setDate(ref.getDate() + 1);
     const slots = daySlots(s, ref); // on règle la journée type de la semaine
     const { cur } = currentSlot(s);
-    const typeOptions = (sel) => Object.entries(CLOCK_TYPES).filter(([id]) => id !== 'reveil' && id !== 'sieste')
-      .map(([id, t]) => `<option value="${id}" ${id === sel ? 'selected' : ''}>${t.label}</option>`).join('');
+    const grip = (sl, name) => `<button type="button" class="drag-handle" data-drag aria-label="Déplacer « ${esc(name)} » (glisser, ou flèches haut et bas)">${icon(ICONS.grip, 22)}</button>`;
     const rows = slots.map((sl) => {
       const info = sl.info;
       const locked = sl.fixed === 'napend';
@@ -499,12 +499,15 @@ ctx.screens['p-clock'] = {
       const label = sl.fixed === 'wake' ? `<strong>Réveil</strong><span class="muted small">Week-end : ${sc.wakeWeekend} · voir plus bas</span>`
         : sl.fixed === 'nap' ? `<strong>Sieste</strong><span class="muted small">${fmtDur(sc.nap.dur)} · voir plus bas</span>`
         : locked ? `<strong>Après la sieste : ${info.label}</strong><span class="muted small">Ajoutez un moment juste après la sieste pour changer</span>`
-        : `<label class="sr-only" for="ck-${sl.id}">Moment de ${sl.time}</label><select id="ck-${sl.id}" class="input sm" data-change="ck-type" data-id="${sl.id}">${typeOptions(sl.type)}</select>`;
-      return `<div class="ck-row ${sl.id === cur.id ? 'now' : ''}">
+        : `<button type="button" class="ck-name" data-act="ck-edit" data-id="${esc(sl.id)}"><strong>${esc(info.label)}</strong>${icon(ICONS.edit, 16)}</button>
+          <span class="muted small ck-say">${esc(info.say)}</span>`;
+      const name = sl.fixed === 'nap' ? 'Sieste' : info.label;
+      return `<div class="ck-row ${sl.id === cur.id ? 'now' : ''}" data-row="${esc(sl.id)}">
+        ${sl.fixed === 'wake' || locked ? '<span class="drag-handle off" aria-hidden="true"></span>' : grip(sl, name)}
         ${timeCtl}
         <span class="ck-ico" style="background:${info.bg};${info.dark ? 'color:#F5C451' : ''}">${icon(ICONS[info.icon] || ICONS.clock, 26)}</span>
         <div class="ck-label">${label}</div>
-        ${sl.fixed ? '<span class="ck-del"></span>' : `<button type="button" class="icon-btn" data-act="ck-del" data-id="${sl.id}" aria-label="Supprimer ce moment">${icon(ICONS.trash, 18)}</button>`}
+        ${sl.fixed ? '<span class="ck-del"></span>' : `<button type="button" class="icon-btn" data-act="ck-del" data-id="${sl.id}" aria-label="Supprimer ${esc(info.label)}">${icon(ICONS.trash, 18)}</button>`}
       </div>`;
     }).join('');
     const hasDodo = ck.slots.some((x) => x.type === 'dodo');
@@ -513,13 +516,15 @@ ctx.screens['p-clock'] = {
       ${ck.on ? `
       <div class="split">
         <div class="col">
-          <div class="ck-list">${rows}</div>
+          <span class="muted small">${icon(ICONS.grip, 16)} Glissez un moment pour changer l’ordre : son heure s’adapte, ajustez ensuite avec − et +. Touchez son nom pour le personnaliser.</span>
+          <div class="ck-list" data-reorder="day">${rows}</div>
           ${sc.wakeWeekend !== sc.wakeWeek ? `<span class="muted small">Le week-end, les moments du matin sont décalés avec le réveil (${sc.wakeWeekend}).</span>` : ''}
           <span class="label">Ajouter un moment</span>
-          <div class="chips">${Object.entries(CLOCK_TYPES).filter(([id]) => id !== 'reveil' && id !== 'sieste').map(([id, t]) => `<button type="button" class="chip dashed" data-act="ck-add" data-v="${id}">${icon(ICONS[t.icon] || ICONS.clock, 18)}${t.label}</button>`).join('')}</div>
+          <div class="chips">${Object.entries(CLOCK_TYPES).filter(([id]) => id !== 'reveil' && id !== 'sieste' && id !== 'perso').map(([id, t]) => `<button type="button" class="chip dashed" data-act="ck-add" data-v="${id}">${icon(ICONS[t.icon] || ICONS.clock, 18)}${t.label}</button>`).join('')}
+            <button type="button" class="chip dashed strong" data-act="ck-add" data-v="perso">${icon(ICONS.plus, 18)}Autre : je crée le mien</button></div>
         </div>
         <div class="side-preview"><span class="label">En ce moment</span>
-          <div class="preview sm" style="background:${cur.info.bg};${cur.info.dark ? 'color:#FBF6EE' : ''}">${animalSVG(momentAnimal(cur.type), { size: 140, asleep: !!cur.info.asleep })}<span class="preview-say">${esc(cur.info.say)}</span></div>
+          <div class="preview sm" style="background:${cur.info.bg};${cur.info.dark ? 'color:#FBF6EE' : ''}">${animalSVG(cur.info.animal, { size: 140, asleep: !!cur.info.asleep })}<span class="preview-say">${esc(cur.info.say)}</span></div>
           ${hasDodo
             ? `<span class="muted small">Pendant « Dodo », l'écran montre que c'est l'heure de dormir et un bouton à maintenir lance la nuit (jamais toute seule). Réveil : (${sc.wakeWeek} en semaine, ${sc.wakeWeekend} le week-end). Si ${childName()} se lève avant, il voit que c'est encore l'heure de dormir.</span>`
             : '<div class="warn-box small">Ajoutez un moment « Dodo » : l’écran montrera que c’est l’heure de dormir, avec le bouton pour lancer la nuit.</div>'}
@@ -572,14 +577,32 @@ ctx.actions['ck-time'] = (b) => {
   sl.time = fromMin(toMin(sl.time) + Number(b.dataset.d)); save(); render();
 };
 ctx.actions['ck-del'] = (b) => { ctx.s.clock.slots = ctx.s.clock.slots.filter((x) => x.id !== b.dataset.id); save(); render(); };
-ctx.actions['ck-add'] = (b) => {
+ctx.actions['ck-add'] = async (b) => {
   const now = new Date();
   const m = Math.ceil((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
-  ctx.s.clock.slots.push({ id: uid(), type: b.dataset.v, time: fromMin(m) });
+  let sl = { id: uid(), type: b.dataset.v, time: fromMin(m) };
+  if (sl.type === 'perso') { sl = await editMoment(sl, { isNew: true }); if (!sl) return; }
+  ctx.s.clock.slots.push(sl);
   save(); render();
-  toast(`« ${CLOCK_TYPES[b.dataset.v].label} » ajouté à ${fromMin(m)}, réglez l’heure avec − et +`);
+  toast(`« ${slotLabel(sl)} » ajouté à ${fromMin(m)} : glissez-le à sa place ou réglez l’heure avec − et +`);
 };
-ctx.changes['ck-type'] = (el) => {
-  const sl = ctx.s.clock.slots.find((x) => x.id === el.dataset.id); if (!sl) return;
-  sl.type = el.value; save(); render();
+const slotLabel = (sl) => (sl.label || (CLOCK_TYPES[sl.type] || CLOCK_TYPES.jeu).label);
+const OVERRIDES = ['label', 'say', 'icon', 'animal', 'bg', 'done'];
+ctx.actions['ck-edit'] = async (b) => {
+  const sl = ctx.s.clock.slots.find((x) => x.id === b.dataset.id); if (!sl) return;
+  const r = await editMoment({ ...sl }, { canDelete: true });
+  if (!r) return;
+  if (r === 'delete') ctx.s.clock.slots = ctx.s.clock.slots.filter((x) => x !== sl);
+  else { OVERRIDES.forEach((k) => delete sl[k]); Object.assign(sl, r); }
+  save(); render();
+};
+// Glisser-déposer : on règle la journée type de la semaine.
+const weekdayRef = () => { const ref = new Date(); while (ref.getDay() === 0 || ref.getDay() === 6) ref.setDate(ref.getDate() + 1); return ref; };
+ctx.reorders = ctx.reorders || {};
+ctx.reorders.day = (id, prev, next) => {
+  const t = moveSlot(ctx.s, id, prev, next, weekdayRef());
+  if (!t) return;
+  save(); render();
+  const sl = daySlots(ctx.s, weekdayRef()).find((x) => x.id === id);
+  toast(`« ${sl ? sl.info.label : 'Moment'} » passe à ${t}. Ajustez avec − et + si besoin`);
 };

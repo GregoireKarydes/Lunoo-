@@ -7,11 +7,13 @@ import { animalSVG, icon, sceneFor } from './animal.js';
 import { fanfare, startBed, stopBed } from './sound.js';
 
 // Moments qu'un enfant peut « faire » et valider lui-même.
-export const REWARDABLE = ['habiller', 'manger', 'douche', 'bain', 'dents', 'ecole', 'sortie', 'calme'];
+export const REWARDABLE = ['habiller', 'manger', 'douche', 'bain', 'dents', 'ecole', 'creche', 'nounou', 'sortie', 'calme', 'perso'];
+/** Ce moment a-t-il le bouton « C'est fait ! » ? Le parent peut l'activer ou le retirer pour chaque moment. */
+export const canDo = (sl) => (sl.done === undefined ? REWARDABLE.includes(sl.type) : !!sl.done);
 
 const BUTTON = {
   habiller: 'Mes habits sont mis !', manger: "J'ai mangé !", douche: "J'ai pris ma douche !", bain: "J'ai pris mon bain !",
-  dents: 'Je me brosse les dents', ecole: 'Mon cartable est prêt !', sortie: 'Mes chaussures sont mises !', calme: 'J’ai fait une pause calme',
+  dents: 'Je me brosse les dents', ecole: 'Mon cartable est prêt !', creche: 'Mon sac est prêt !', nounou: 'Mon sac est prêt !', sortie: 'Mes chaussures sont mises !', calme: 'J’ai fait une pause calme',
 };
 export const buttonLabel = (type) => BUTTON[type] || "C'est fait !";
 
@@ -43,6 +45,9 @@ const PHRASES = {
     'Ton cartable est prêt, bonne journée à l’école !', 'Tu vas apprendre plein de choses aujourd’hui !',
     'Le renard te souhaite une super journée !', 'Tout est prêt, tu es à l’heure !',
   ],
+  creche: ['Ton sac est prêt, bonne journée à la crèche !', 'Tu vas bien t’amuser avec les copains !', 'Le lapin te fait un gros bisou !', 'Tout est prêt, on peut y aller !'],
+  nounou: ['Ton sac est prêt, bonne journée chez nounou !', 'Nounou va être contente de te voir !', 'L’ourson te fait un gros câlin !', 'Tout est prêt, on peut y aller !'],
+  perso: ['Tu l’as fait !', 'C’est fini, et c’est réussi !', 'Tu as très bien fait ça !', 'Quelle belle réussite !'],
   sortie: ['Les chaussures sont mises, en route pour l’aventure !', 'Allez, on part se promener !', 'Le lapin est prêt à sauter dehors avec toi !', 'Tout est prêt pour sortir, super !'],
   calme: ['Tu as su te poser, c’est précieux.', 'Respirer doucement, tu sais faire !', 'Le chat ronronne avec toi.', 'Quel moment tout calme !'],
 };
@@ -84,7 +89,7 @@ export function speak(text) {
 
 // ---------- Fête ----------
 const COLORS = ['#F5C451', '#E8875B', '#7D74E6', '#4FA3E8', '#3DB58A', '#EE6FA0'];
-const EXTRA = { dents: '✦', bain: '○', douche: '💧', manger: '♥', habiller: '★', ecole: '★', sortie: '🍃', calme: '✦' };
+const EXTRA = { dents: '✦', bain: '○', douche: '💧', manger: '♥', habiller: '★', ecole: '★', creche: '★', nounou: '♥', perso: '★', sortie: '🍃', calme: '✦' };
 
 function confetti(n = 70) {
   return Array.from({ length: n }, (_, i) => {
@@ -95,11 +100,11 @@ function confetti(n = 70) {
 }
 
 /** Affiche la fête par-dessus l'écran. preview : sans voix ni enregistrement. */
-export function celebrate(type, slotId, { preview = false } = {}) {
+export function celebrate(type, slotId, { preview = false, animal = null } = {}) {
   if (!preview && slotId) markDone(slotId);
   const name = ctx.s.child.name || '';
   const t = bravoText(type, name);
-  const a = momentAnimal(type);
+  const a = animal || momentAnimal(type);
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const extra = EXTRA[type] || '★';
   const el = document.createElement('div');
@@ -129,11 +134,11 @@ export function celebrate(type, slotId, { preview = false } = {}) {
 }
 
 // « Avec un adulte » : l'enfant montre à un grand, qui garde le doigt appuyé 2 secondes.
-function askAdult(type, slotId) {
+function askAdult(type, slotId, animal = null) {
   const el = document.createElement('div');
   el.className = 'celebrate adult';
   el.innerHTML = `<div class="cel-inner">
-      ${animalSVG(momentAnimal(type), { size: 200, cls: 'bob' })}
+      ${animalSVG(animal || momentAnimal(type), { size: 200, cls: 'bob' })}
       <h1 class="cel-title">Va montrer à un grand !</h1>
       <p class="cel-line">Papa, maman ou un adulte va regarder, puis appuyer longtemps sur le bouton.</p>
       <button type="button" class="btn primary xl hold-adult"><span class="hold-fill"></span><span class="hold-txt">Un grand a vérifié (appui long)</span></button>
@@ -142,7 +147,7 @@ function askAdult(type, slotId) {
   document.body.appendChild(el);
   const b = el.querySelector('.hold-adult');
   let timer = null;
-  const start = (e) => { e.preventDefault(); b.classList.add('holding'); timer = setTimeout(() => { el.remove(); celebrate(type, slotId); }, 2000); };
+  const start = (e) => { e.preventDefault(); b.classList.add('holding'); timer = setTimeout(() => { el.remove(); celebrate(type, slotId, { animal }); }, 2000); };
   const cancel = () => { b.classList.remove('holding'); clearTimeout(timer); };
   b.addEventListener('pointerdown', start);
   ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, cancel));
@@ -150,11 +155,11 @@ function askAdult(type, slotId) {
 }
 
 /** Bouton « C'est fait ! » touché par l'enfant. */
-export function childDone(type, slotId) {
+export function childDone(type, slotId, animal = null) {
   if (doneToday(slotId)) { speak('Déjà fait ! Bravo encore.'); return; }
   if (type === 'dents') return go('brush', { slotId });
-  if (ctx.s.rewards.adult) return askAdult(type, slotId);
-  celebrate(type, slotId);
+  if (ctx.s.rewards.adult) return askAdult(type, slotId, animal);
+  celebrate(type, slotId, { animal });
 }
 
 // ---------- Minuteur de brossage (2 minutes, quatre coins de la bouche) ----------
@@ -209,5 +214,5 @@ function finishBrush(slotId, back) {
 }
 ctx.actions['brush-stop'] = (b) => go(b.dataset.back || 'home');
 ctx.actions['brush-done'] = (b) => { clearInterval(brushTimer); finishBrush(b.dataset.v, b.dataset.back); };
-ctx.actions['child-done'] = (b) => childDone(b.dataset.type, b.dataset.slot);
+ctx.actions['child-done'] = (b) => childDone(b.dataset.type, b.dataset.slot, b.dataset.animal || null);
 

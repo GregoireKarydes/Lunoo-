@@ -6,7 +6,7 @@ import { parentCorner } from './ui.js';
 import { allStories, playStory } from './narrator.js';
 import { stopAmbience, startBed, stopBed, bedPlaying, setBedMuted } from './sound.js';
 import { currentSlot } from './clock.js';
-import { REWARDABLE, buttonLabel, doneToday, dayKey, speak } from './rewards.js';
+import { canDo, buttonLabel, doneToday, dayKey, speak } from './rewards.js';
 
 const pal = () => PALETTES[ctx.s.child.color] || PALETTES.corail;
 const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
@@ -14,8 +14,8 @@ const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMin
 // ---------- Accueil ----------
 // Animal du moment + son décor animé (bulles au bain, gouttes sous la douche…).
 export { hhmm };
-export function sceneBlock(kind, asleep, size) {
-  const a = momentAnimal(kind);
+export function sceneBlock(kind, asleep, size, animal = null) {
+  const a = animal || momentAnimal(kind);
   const sc = sceneFor(kind, { asleep });
   return `${animalSVG(a, { size, cls: sc.cls || (asleep ? '' : 'bob'), asleep, label: ANIMALS[a].label })}${sc.html}`;
 }
@@ -76,9 +76,9 @@ document.addEventListener('pointerleave', (e) => { if (nhB && e.target === nhB) 
 document.addEventListener('contextmenu', (e) => { if (e.target.closest && e.target.closest('[data-nighthold]')) e.preventDefault(); });
 
 function rewardBtn(cur) {
-  if (!ctx.s.rewards || !ctx.s.rewards.on || !REWARDABLE.includes(cur.type)) return '';
+  if (!ctx.s.rewards || !ctx.s.rewards.on || !canDo(cur)) return '';
   if (doneToday(cur.id)) return `<div class="done-chip">★ C'est fait, bravo !</div>`;
-  return `<button type="button" class="done-btn" data-act="child-done" data-type="${cur.type}" data-slot="${esc(cur.id)}">${icon(ICONS.check, 34)}${esc(buttonLabel(cur.type))}</button>`;
+  return `<button type="button" class="done-btn" data-act="child-done" data-type="${cur.type}" data-slot="${esc(cur.id)}" data-animal="${esc(cur.info.animal)}">${icon(ICONS.check, 34)}${esc(cur.type === 'perso' || cur.say ? "C'est fait !" : buttonLabel(cur.type))}</button>`;
 }
 
 const hhmm = () => { const d = new Date(); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
@@ -87,7 +87,7 @@ function clockHome() {
   const s = ctx.s, c = s.child;
   const { cur, next, today, progress } = currentSlot(s);
   // Moment déjà fait : on ne répète pas « c'est l'heure de la douche », on attend le suivant en temps libre.
-  const waiting = s.rewards && s.rewards.on && REWARDABLE.includes(cur.type) && doneToday(cur.id);
+  const waiting = s.rewards && s.rewards.on && canDo(cur) && doneToday(cur.id);
   const info = waiting ? { ...cur.info, bg: pal().bg, say: DONE_SAY[cur.type] || 'C’est fait !', icon: 'check', asleep: false, dark: false } : cur.info;
   const kind = waiting ? 'libre' : cur.type;
   const dark = !!info.dark;
@@ -98,8 +98,8 @@ function clockHome() {
     ${parentCorner(info.bg, dark ? '#F5C451' : '#E2B24C')}
     <div class="ch-top"><h1 class="hello">Coucou ${esc(c.name)} !</h1></div>
     <div class="ch-main">
-      <div class="ch-animal" data-act="say" data-v="${esc(cur.type)}" data-next="${esc(next.type)}" data-wait="${waiting ? 1 : ''}" role="button" aria-label="Écouter : ${esc(info.say)}">
-        ${sceneBlock(kind, !!info.asleep, 320)}
+      <div class="ch-animal" data-act="say" data-wait="${waiting ? 1 : ''}" role="button" aria-label="Écouter : ${esc(info.say)}">
+        ${sceneBlock(kind, !!info.asleep, 320, waiting ? null : info.animal)}
         ${activityBadge(info)}
       </div>
       <div class="ch-side">
@@ -107,7 +107,7 @@ function clockHome() {
         ${waiting ? '' : rewardBtn(cur)}
         ${!waiting && info.asleep ? nightHoldBtn(cur) : ''}
         <div class="ch-next">
-          <span class="ch-next-ico" style="background:${next.info.bg}">${animalSVG(momentAnimal(next.type), { size: 56, asleep: !!next.info.asleep })}</span>
+          <span class="ch-next-ico" style="background:${next.info.bg}">${animalSVG(next.info.animal, { size: 56, asleep: !!next.info.asleep })}</span>
           <div class="grow"><span class="ch-next-label">Ensuite : ${esc(next.info.label)}</span>
             <div class="ch-bar" aria-label="Temps avant le prochain moment"><span style="width:${Math.round(progress * 100)}%"></span></div></div>
           <span class="ch-next-time">${next.time}</span>
@@ -152,7 +152,7 @@ ctx.screens.home = {
     </div>`;
   },
 };
-ctx.actions.say = (b) => speak(momentTalk(b.dataset.v, ctx.s.child.name, b.dataset.next, !!b.dataset.wait));
+ctx.actions.say = (b) => { const { cur, next } = currentSlot(ctx.s); speak(momentTalk(cur, ctx.s.child.name, next, !!b.dataset.wait)); };
 ctx.actions['free-stories'] = () => { setBedMuted(false); ctx.ritual = null; ctx.free = { chosen: [] }; go('pick', { max: 3, free: true }); };
 
 // ---------- Choix des histoires ----------

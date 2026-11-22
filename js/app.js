@@ -11,6 +11,7 @@ import { speak } from './rewards.js';
 import { momentTalk } from './data.js';
 import { openParent } from './parent.js';
 import './studio.js';
+import './reorder.js';
 
 ctx.root = document.getElementById('app');
 
@@ -116,7 +117,7 @@ setInterval(async () => {
       lastSlot = id;
       if (id && ctx.s.clock.chime) chime();
       // Annonce à voix haute du nouveau moment (jamais pendant le sommeil).
-      if (cs && ctx.s.clock.voice !== false && !cs.cur.info.asleep) setTimeout(() => speak(momentTalk(cs.cur.type, ctx.s.child.name, cs.next.type)), 1200);
+      if (cs && ctx.s.clock.voice !== false && !cs.cur.info.asleep) setTimeout(() => speak(momentTalk(cs.cur, ctx.s.child.name, cs.next)), 1200);
       render();
     } else if (cs) {
       // Même moment : on avance juste la barre, sans redessiner (les animations ne repartent pas de zéro).

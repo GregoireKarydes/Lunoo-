@@ -27,7 +27,8 @@ export const ANIMALS = {
 // Chaque moment a son animal : l'enfant le reconnaît d'un coup d'œil, même sans lire.
 export const MOMENT_ANIMALS = {
   reveil: 'coq', manger: 'ours', douche: 'grenouille', bain: 'canard', dents: 'castor',
-  habiller: 'pingouin', jeu: 'chien', ecole: 'renard', sortie: 'lapin', calme: 'chat',
+  habiller: 'pingouin', jeu: 'chien', ecole: 'renard', creche: 'lapin', nounou: 'ours', sortie: 'lapin', calme: 'chat',
+  perso: 'renard',
   histoire: 'mouton', sieste: 'chat', dodo: 'hibou', nuit: 'hibou', soon: 'hibou', libre: 'renard',
 };
 export const momentAnimal = (kind) => MOMENT_ANIMALS[kind] || 'renard';
@@ -35,7 +36,7 @@ export const momentAnimal = (kind) => MOMENT_ANIMALS[kind] || 'renard';
 // Quand le moment est fait, en attendant le suivant : animal par défaut et « temps libre ».
 export const DONE_SAY = {
   habiller: 'Les habits sont mis !', manger: 'Le repas, c’est fini !', douche: 'La douche, c’est fait !', bain: 'Le bain, c’est fait !',
-  dents: 'Les dents sont toutes propres !', ecole: 'Le cartable est prêt !', sortie: 'Les chaussures sont mises !', calme: 'Pause calme réussie !',
+  dents: 'Les dents sont toutes propres !', ecole: 'Le cartable est prêt !', creche: 'Le sac est prêt !', nounou: 'Le sac est prêt !', sortie: 'Les chaussures sont mises !', calme: 'Pause calme réussie !',
 };
 
 export const MOMENTS = {
@@ -57,12 +58,41 @@ export const CLOCK_TYPES = {
   habiller: { label: "S'habiller", say: "C'est l'heure de s'habiller !", bg: '#FCEDF3', icon: 'habiller' },
   jeu: { label: 'Jeu', say: "C'est l'heure de jouer !", bg: '#FCEBC0', icon: 'jeu' },
   ecole: { label: 'École', say: "C'est l'heure de partir à l'école !", bg: '#E6E3FA', icon: 'ecole' },
+  creche: { label: 'Crèche', say: "C'est l'heure d'aller à la crèche !", bg: '#E6E3FA', icon: 'creche' },
+  nounou: { label: 'Nounou', say: "C'est l'heure d'aller chez nounou !", bg: '#E6E3FA', icon: 'nounou' },
   sortie: { label: 'Dehors', say: "On va se promener !", bg: '#D7EFE3', icon: 'sortie' },
   calme: { label: 'Calme', say: 'Un moment tout calme', bg: '#D7EFE3', icon: 'calme' },
   histoire: { label: 'Histoire', say: "C'est l'heure de l'histoire", bg: '#E6E3FA', icon: 'histoire' },
   sieste: { label: 'Sieste', say: "C'est l'heure de la sieste", bg: '#2E3270', dark: true, asleep: true, icon: 'nuit' },
   dodo: { label: 'Dodo', say: "C'est l'heure de dormir", bg: '#1F2250', dark: true, asleep: true, icon: 'nuit' },
+  // Moment inventé par le parent : son nom, sa phrase, son pictogramme, son animal et sa couleur.
+  perso: { label: 'Autre moment', say: "C'est l'heure !", bg: '#EDE7F6', icon: 'star' },
 };
+
+// École, crèche ou nounou : le même moment de la journée, selon où va l'enfant.
+export const GARDE_TYPES = ['ecole', 'creche', 'nounou'];
+
+// Ce que le parent peut choisir pour personnaliser un moment.
+export const PICTOS = ['sun', 'habiller', 'manger', 'douche', 'bain', 'dents', 'jeu', 'ecole', 'creche', 'nounou', 'sortie', 'calme',
+  'histoire', 'nuit', 'music', 'star', 'coeur', 'famille', 'piscine', 'velo', 'voiture', 'ballon', 'peinture', 'medecin', 'home'];
+export const MOMENT_COLORS = ['#FCEBC0', '#FDE7B0', '#FFE0CC', '#FCEDF3', '#EDE7F6', '#E6E3FA', '#E8F2FB', '#D6EEF7', '#D7EFE3', '#F3E8D8'];
+
+/**
+ * Apparence d'un moment : celle de son type, puis ce que le parent a personnalisé
+ * (label, say, icon, animal, bg). Ajoute « animal », l'animal à afficher.
+ */
+export function slotInfo(sl) {
+  const base = CLOCK_TYPES[sl.type] || CLOCK_TYPES.jeu;
+  const o = { ...base, animal: momentAnimal(sl.type) };
+  const label = (sl.label || '').trim(), say = (sl.say || '').trim();
+  if (label) o.label = label;
+  if (say) o.say = say;
+  else if (label && sl.type === 'perso') o.say = `C'est l'heure : ${label} !`;
+  if (sl.icon && ICONS[sl.icon]) o.icon = sl.icon;
+  if (sl.animal && ANIMALS[sl.animal]) o.animal = sl.animal;
+  if (sl.bg && !base.asleep) { o.bg = sl.bg; o.dark = false; }
+  return o;
+}
 
 export const SOUNDS = {
   berceuse: { label: 'Berceuse de Brahms', music: true },
@@ -115,6 +145,19 @@ export const ICONS = {
   habiller: 'M8 3l4 3 4-3 5 4-3 4-2-1v11H8V10l-2 1-3-4z',
   ecole: 'M6 8a6 6 0 0 1 12 0v12H6zM9 14h6M9 4.5V3h6v1.5',
   sortie: 'M12 22v-6M8 16h8l-4-6 3 0-3-6-3 6h3z',
+  creche: 'M3 14h8v7H3zM13 14h8v7h-8zM8 3h8v8H8z',
+  nounou: 'M3 11l9-8 9 8M5 10v10h14V10M12 18s-3.2-1.9-3.2-3.9a1.7 1.7 0 0 1 3.2-.8 1.7 1.7 0 0 1 3.2.8c0 2-3.2 3.9-3.2 3.9z',
+  star: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3l-5.5 2.9 1-6.2L3 9.6l6.2-.9z',
+  coeur: 'M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z',
+  famille: 'M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM17 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM2 20a6 6 0 0 1 12 0M14.5 15.5A4.5 4.5 0 0 1 22 20',
+  piscine: 'M2 17c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5M2 21c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5M8 14V5a2 2 0 0 1 4 0M16 14V5a2 2 0 0 0-4 0M8 9h8',
+  velo: 'M5.5 18a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM18.5 18a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM5.5 14.5l4-7h5l4 7M9.5 7.5l3 7h-7M14 5h2.5',
+  voiture: 'M3 16v-4l2-5h14l2 5v4zM5 16v2.5h3V16M16 16v2.5h3V16M3 12h18M7 14h.01M17 14h.01',
+  ballon: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 3v18M3 12h18M5.6 5.6c3.5 3.5 9.3 3.5 12.8 0M5.6 18.4c3.5-3.5 9.3-3.5 12.8 0',
+  peinture: 'M18 3l3 3-9 9-3-3zM9 12l-3 3c-2 2-1 4-3 6 3 0 5-.5 6.5-2l2.5-2.5',
+  medecin: 'M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z',
+  grip: 'M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01',
+  edit: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
 };
 
 // Histoires fournies : des textes originaux, lus par la voix de la tablette
@@ -502,6 +545,16 @@ const TALK = {
     'Le renard a préparé son cartable. On se prépare pour l’école ?',
     'C’est l’heure de partir à l’école. Passe une très belle journée, {P} !',
   ],
+  creche: [
+    '{P}, c’est l’heure d’aller à la crèche. Tes copains t’attendent pour jouer !',
+    'Le lapin a préparé son sac. On y va, à la crèche ?',
+    'C’est l’heure de la crèche. Passe une très belle journée, {P} !',
+  ],
+  nounou: [
+    '{P}, c’est l’heure d’aller chez nounou. Elle sera contente de te voir !',
+    'L’ourson a préparé son sac. On part chez nounou ?',
+    'C’est l’heure d’aller chez nounou. Passe une très belle journée, {P} !',
+  ],
   jeu: [
     'C’est l’heure de jouer, {P} ! À quoi as-tu envie de jouer ?',
     'Le chien veut jouer avec toi ! Amuse-toi bien.',
@@ -553,16 +606,30 @@ const DONE_TALK = [
   'Super, {P} ! Maintenant, un peu de temps libre rien que pour toi.',
 ];
 const NEXT_TXT = {
-  reveil: 'se lever', habiller: 's’habiller', manger: 'manger', ecole: 'partir à l’école', jeu: 'jouer', sortie: 'aller dehors',
+  reveil: 'se lever', habiller: 's’habiller', manger: 'manger', ecole: 'partir à l’école', creche: 'aller à la crèche', nounou: 'aller chez nounou', jeu: 'jouer', sortie: 'aller dehors',
   douche: 'la douche', bain: 'le bain', dents: 'se brosser les dents', calme: 'un moment calme', histoire: 'l’histoire', sieste: 'la sieste', dodo: 'dormir',
 };
 const pickOne = (a) => a[Math.floor(Math.random() * a.length)];
 
-/** Phrase dite par l'animal du moment (ou le renard en temps libre), avec ce qui vient ensuite. */
-export function momentTalk(type, name, nextType, waiting = false) {
+/**
+ * Phrase dite par l'animal du moment (ou le renard en temps libre), avec ce qui vient ensuite.
+ * cur et next : un créneau de la journée (avec ses personnalisations) ou simplement son type.
+ */
+export function momentTalk(cur, name, next, waiting = false) {
+  const sl = typeof cur === 'string' ? { type: cur } : (cur || {});
+  const nx0 = typeof next === 'string' ? { type: next } : next;
+  const type = sl.type, info = slotInfo(sl), custom = !!((sl.say || '').trim() || (type === 'perso'));
   const n = name || '';
   const fill = (t) => t.replaceAll('{P}', n).replace(/\s+,/g, ',').replace(/^,\s*/, '');
-  const main = waiting ? `${DONE_SAY[type] || ''} ${fill(pickOne(DONE_TALK))}` : fill(pickOne(TALK[type] || ['Coucou {P} !']));
-  const nx = nextType && NEXT_TXT[nextType] && !['sieste', 'dodo'].includes(type) ? ` Après, ce sera l’heure de ${NEXT_TXT[nextType]}.` : '';
+  let main;
+  if (waiting) main = `${DONE_SAY[type] || 'C’est fait !'} ${fill(pickOne(DONE_TALK))}`;
+  else if (custom) main = n ? `${n}, ${info.say.charAt(0).toLowerCase()}${info.say.slice(1)}` : info.say;
+  else main = fill(pickOne(TALK[type] || ['Coucou {P} !']));
+  let nx = '';
+  if (nx0 && !['sieste', 'dodo'].includes(type)) {
+    const ni = slotInfo(nx0);
+    if ((nx0.say || '').trim() || nx0.type === 'perso' || (nx0.label || '').trim()) nx = ` Après : ${ni.label}.`;
+    else if (NEXT_TXT[nx0.type]) nx = ` Après, ce sera l’heure de ${NEXT_TXT[nx0.type]}.`;
+  }
   return (main + nx).replace(/de le /g, 'du ').replace(/de les /g, 'des ');
 }

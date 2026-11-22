@@ -13,7 +13,7 @@ Lunoo transforme une tablette (ou un ancien téléphone) en compagnon du soir : 
 - **Studio voix** : enregistrement page par page avec le micro de la tablette (MediaRecorder).
 - **Histoires fournies** : 6 textes originaux personnalisés avec le prénom et l'animal de l'enfant, lus par la voix de synthèse de la tablette tant que personne ne les a enregistrés.
 - **Import de sons** : un parent peut ajouter un fichier audio dont il a les droits.
-- **Horloge intelligente** : le parent règle les moments de la journée (réveil, s'habiller, manger, douche, dents, jeu, école, sieste, dodo…). L'écran de l'enfant change tout seul d'image, de couleur et de message, montre ce qui vient ensuite et toute la journée en pictogrammes. Pendant « Dodo », l'écran montre que c'est l'heure de dormir (si l'enfant se lève à 5 h, il le voit) ; la nuit ne se lance jamais toute seule : un parent garde le doigt sur « Lancer la nuit » (code si besoin), puis choisit histoires, son et lumière. Le week-end, les moments du matin sont décalés avec le réveil.
+- **Horloge intelligente** : le parent règle les moments de la journée (réveil, s'habiller, manger, douche, dents, jeu, école, sieste, dodo…). L'écran de l'enfant change tout seul d'image, de couleur et de message, montre ce qui vient ensuite et toute la journée en pictogrammes. Pendant « Dodo », l'écran montre que c'est l'heure de dormir (si l'enfant se lève à 5 h, il le voit) ; la nuit ne se lance jamais toute seule : un parent garde le doigt sur « Lancer la nuit » (code si besoin), puis choisit histoires, son et lumière. Le week-end, les moments du matin sont décalés avec le réveil. On glisse les moments pour changer l'ordre (l'heure s'adapte), « École » peut devenir « Crèche » ou « Nounou », et chaque moment se personnalise (nom, phrase, pictogramme, animal, couleur) ; « Autre moment » permet d'en créer un qui n'est pas proposé.
 
 ## Mettre en ligne
 
@@ -55,7 +55,9 @@ index.html, manifest.webmanifest, sw.js
 css/app.css
 js/app.js         démarrage, clics, appui long
 js/ctx.js         état, navigation, moteur du rituel et de la nuit
-js/clock.js       horloge intelligente (créneaux de la journée)
+js/clock.js       horloge intelligente (créneaux de la journée, déplacement d'un moment)
+js/reorder.js     glisser-déposer des moments (doigt, souris, clavier)
+js/moment-edit.js personnaliser ou créer un moment
 js/store.js       IndexedDB, réglages, sauvegarde
 js/data.js        animaux, couleurs, moments, histoires
 js/animal.js      dessins SVG

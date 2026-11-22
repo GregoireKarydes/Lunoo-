@@ -1,5 +1,5 @@
 // Horloge intelligente : quel créneau de la journée est en cours ?
-import { CLOCK_TYPES } from './data.js';
+import { slotInfo } from './data.js';
 
 const toMin = (hhmm) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
 const isWeekend = (d) => d.getDay() === 0 || d.getDay() === 6;
@@ -29,7 +29,7 @@ export function daySlots(s, date = new Date()) {
     }
   }
   return list
-    .map((x) => ({ ...x, min: toMin(x.time), info: CLOCK_TYPES[x.type] || CLOCK_TYPES.jeu }))
+    .map((x) => ({ ...x, min: toMin(x.time), info: slotInfo(x) }))
     .sort((a, b) => a.min - b.min);
 }
 
@@ -96,3 +96,43 @@ export function isSleepTime(s, now = new Date()) {
   if (!s.clock.on) return false;
   return currentSlot(s, now).cur.type === 'dodo';
 }
+
+/**
+ * Glisser-déposer : le moment `id` est posé entre `prevId` et `nextId` (ids de la liste affichée).
+ * Il prend une heure entre ses deux voisins ; s'il n'y a pas la place, les moments suivants sont
+ * poussés de 5 minutes. On règle la journée type de la semaine (`ref`). Renvoie la nouvelle heure.
+ */
+export function moveSlot(s, id, prevId, nextId, ref) {
+  const list = daySlots(s, ref);
+  const moved = list.find((x) => x.id === id);
+  if (!moved || moved.fixed === 'wake' || moved.fixed === 'napend') return null;
+  const all = list.filter((x) => x.id !== id);
+  const others = all.filter((x) => x.fixed !== 'napend');
+  let prev = all.find((x) => x.id === prevId);
+  let next = all.find((x) => x.id === nextId);
+  // Rien ne passe avant le réveil.
+  if (!prev) { prev = all[0]; next = all[1]; }
+  const p = prev.min;
+  let t;
+  if (!next) t = Math.min(p + 30, 23 * 60 + 45);
+  else {
+    const gap = next.min - p;
+    t = gap >= 10 ? p + Math.max(5, Math.round(gap / 2 / 5) * 5) : p + 5;
+    if (t >= next.min) t = p + 5;
+  }
+  const setTime = (sl, m) => {
+    const v = fmt(m);
+    if (sl.fixed === 'nap') s.schedule.nap.start = v;
+    else { const raw = s.clock.slots.find((x) => x.id === sl.id); if (raw) raw.time = v; }
+  };
+  setTime(moved, t);
+  // Pousse les suivants s'ils se retrouvent avant ou à la même heure.
+  let last = t;
+  for (const sl of others.filter((x) => x.min >= p && x !== prev)) {
+    if (sl.fixed === 'wake') continue;
+    if (sl.min > last) break;
+    last += 5; setTime(sl, last);
+  }
+  return fmt(t);
+}
+const fmt = (m) => { m = Math.max(0, Math.min(1439, m)); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; };

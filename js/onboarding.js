@@ -1,7 +1,9 @@
 // Premier lancement, sans inscription : prénom, sa journée, les heures, le geste de la lune.
-import { ctx, esc, go, save, render, toMin, fromMin } from './ctx.js';
-import { ANIMALS, PALETTES, ICONS, CLOCK_TYPES } from './data.js';
+import { ctx, esc, go, save, render, toMin, fromMin, uid } from './ctx.js';
+import { ANIMALS, PALETTES, ICONS, CLOCK_TYPES, GARDE_TYPES } from './data.js';
+import { editMoment } from './moment-edit.js';
 import { daySlots } from './clock.js';
+import { slotInfo as daySlotInfo } from './data.js';
 import { animalSVG, moonSVG, icon } from './animal.js';
 import { requestPersistence } from './store.js';
 
@@ -95,10 +97,15 @@ const DAY_IDEAS = [
   ['dents', 'dents', 'Dents', '19:20'],
 ];
 const hasIdea = (key) => (key === 'sieste' ? ctx.s.schedule.nap.on : ctx.s.clock.slots.some((x) => x.id === key));
+const IDEA_IDS = DAY_IDEAS.map((x) => x[0]);
+// Moments ajoutés par le parent (« Autre moment ») : tout ce qui n'est pas une idée proposée ni le jeu / dodo par défaut.
+const extraSlots = () => ctx.s.clock.slots.filter((x) => !IDEA_IDS.includes(x.id) && x.id !== 'c1' && x.type !== 'dodo');
 
 ctx.screens['onb-day'] = {
   render() {
     const t = (type) => CLOCK_TYPES[type];
+    const ecole = ctx.s.clock.slots.find((x) => x.id === 'ecole');
+    const garde = ecole ? ecole.type : 'ecole';
     const fixed = (type, label) => `<div class="day-tile fixed" style="background:${t(type).bg};${t(type).dark ? 'color:#FBF6EE' : ''}">${icon(ICONS[t(type).icon], 32)}<strong>${label}</strong><span>toujours là</span></div>`;
     return `<div class="screen onb">
       ${head(2, 'onb-name')}
@@ -107,10 +114,15 @@ ctx.screens['onb-day'] = {
         <p class="lead muted">Touchez les moments à afficher sur son écran. Un animal et une couleur pour chacun.</p>
         <div class="day-grid">
           ${fixed('reveil', 'Réveil')}
-          ${DAY_IDEAS.map(([key, type, label]) => { const on = hasIdea(key); return `<button type="button" class="day-tile ${on ? 'sel' : ''}" aria-pressed="${on}" data-act="onb-idea" data-v="${key}" style="${on ? `background:${t(type).bg};${t(type).dark ? 'color:#FBF6EE' : ''}` : ''}">
+          ${DAY_IDEAS.map(([key, type, label]) => { const on = hasIdea(key); if (key === 'ecole') { type = garde; label = CLOCK_TYPES[garde].label; } return `<button type="button" class="day-tile ${on ? 'sel' : ''}" aria-pressed="${on}" data-act="onb-idea" data-v="${key}" style="${on ? `background:${t(type).bg};${t(type).dark ? 'color:#FBF6EE' : ''}` : ''}">
             ${icon(ICONS[t(type).icon], 32)}<strong>${label}</strong><span class="day-check">${on ? icon(ICONS.check, 18) : '+'}</span></button>`; }).join('')}
+          ${extraSlots().map((sl) => { const info = daySlotInfo(sl); return `<button type="button" class="day-tile sel" data-act="onb-extra" data-v="${esc(sl.id)}" style="background:${info.bg}" aria-label="${esc(info.label)} : modifier ou retirer">
+            ${icon(ICONS[info.icon] || ICONS.star, 32)}<strong>${esc(info.label)}</strong><span class="day-check">${icon(ICONS.edit, 16)}</span></button>`; }).join('')}
+          <button type="button" class="day-tile other" data-act="onb-other">${icon(ICONS.plus, 32)}<strong>Autre moment</strong><span>nom, image, animal</span></button>
           ${fixed('dodo', 'Dodo')}
         </div>
+        ${ecole ? `<div class="garde-row" role="group" aria-label="Où va ${esc(ctx.s.child.name)} ?"><span class="label">Le matin, ${esc(ctx.s.child.name)} va…</span>
+          <div class="chips">${GARDE_TYPES.map((k) => `<button type="button" class="chip ${garde === k ? 'sel' : ''}" aria-pressed="${garde === k}" data-act="onb-garde" data-v="${k}">${icon(ICONS[CLOCK_TYPES[k].icon], 18)}${{ ecole: 'à l’école', creche: 'à la crèche', nounou: 'chez nounou' }[k]}</button>`).join('')}</div></div>` : ''}
       </div>
       <div class="onb-foot"><span class="muted">Vous pourrez en ajouter ou en retirer plus tard.</span><button type="button" class="btn primary" data-act="onb-day-next">Continuer</button></div>
     </div>`;
@@ -120,12 +132,31 @@ ctx.actions['onb-idea'] = (b) => {
   const key = b.dataset.v, idea = DAY_IDEAS.find((x) => x[0] === key);
   if (key === 'sieste') ctx.s.schedule.nap.on = !ctx.s.schedule.nap.on;
   else if (hasIdea(key)) ctx.s.clock.slots = ctx.s.clock.slots.filter((x) => x.id !== key);
-  else ctx.s.clock.slots.push({ id: key, type: idea[1], time: idea[3] });
+  else {
+    const sl = { id: key, type: idea[1], time: idea[3] };
+    // « Petit-déjeuner », « Goûter »… : leur nom s'affiche partout (écran de l'enfant, frise, espace parent).
+    if (idea[2] !== CLOCK_TYPES[idea[1]].label && key !== 'ecole') sl.label = idea[2];
+    ctx.s.clock.slots.push(sl);
+  }
+  save(); render();
+};
+ctx.actions['onb-garde'] = (b) => { const sl = ctx.s.clock.slots.find((x) => x.id === 'ecole'); if (sl) { sl.type = b.dataset.v; save(); render(); } };
+ctx.actions['onb-other'] = async () => {
+  const sl = await editMoment({ id: uid(), type: 'perso', time: '10:00' }, { isNew: true });
+  if (!sl) return;
+  ctx.s.clock.slots.push(sl); save(); render();
+};
+ctx.actions['onb-extra'] = async (b) => {
+  const sl = ctx.s.clock.slots.find((x) => x.id === b.dataset.v); if (!sl) return;
+  const r = await editMoment({ ...sl }, { canDelete: true });
+  if (!r) return;
+  if (r === 'delete') ctx.s.clock.slots = ctx.s.clock.slots.filter((x) => x !== sl);
+  else { ['label', 'say', 'icon', 'animal', 'bg', 'done'].forEach((k) => delete sl[k]); Object.assign(sl, r); }
   save(); render();
 };
 ctx.actions['onb-day-next'] = () => {
   const sl = ctx.s.clock.slots;
-  const chosen = DAY_IDEAS.some(([key]) => key !== 'sieste' && sl.some((x) => x.id === key));
+  const chosen = DAY_IDEAS.some(([key]) => key !== 'sieste' && sl.some((x) => x.id === key)) || extraSlots().length > 0;
   // Le moment « Jeu » par défaut ne sert que si rien n'est choisi (sinon l'écran dirait « réveil » toute la journée).
   if (chosen) ctx.s.clock.slots = sl.filter((x) => x.id !== 'c1');
   else if (!sl.some((x) => x.id === 'c1')) sl.push({ id: 'c1', type: 'jeu', time: '8:00' });
@@ -140,20 +171,22 @@ ctx.screens['onb-times'] = {
     const pm = (act, extra, label) => `<div class="pair"><button type="button" class="round sm" data-act="${act}" ${extra} data-d="-15" aria-label="${label} plus tôt">−</button>`;
     const rows = daySlots(s, ref).filter((x) => x.fixed !== 'napend').map((sl) => {
       const info = sl.info;
-      const label = (DAY_IDEAS.find((x) => x[0] === sl.id) || [])[2] || (sl.fixed === 'wake' ? 'Réveil' : sl.fixed === 'nap' ? 'Sieste' : info.label);
+      const label = sl.fixed === 'wake' ? 'Réveil' : sl.fixed === 'nap' ? 'Sieste' : (sl.label || (sl.id === 'ecole' ? '' : (DAY_IDEAS.find((x) => x[0] === sl.id) || [])[2]) || info.label);
+      const grip = sl.fixed === 'wake' ? '<span class="drag-handle off" aria-hidden="true"></span>'
+        : `<button type="button" class="drag-handle" data-drag aria-label="Déplacer « ${esc(label)} » (glisser, ou flèches haut et bas)">${icon(ICONS.grip, 22)}</button>`;
       let ctl;
       if (sl.fixed === 'wake') ctl = `${pm('time', 'data-k="wakeWeek"', label)}<span class="ck-time">${sc.wakeWeek}</span><button type="button" class="round sm" data-act="time" data-k="wakeWeek" data-d="15" aria-label="${label} plus tard">+</button></div>`;
       else if (sl.fixed === 'nap') ctl = `${pm('time', 'data-k="nap.start"', label)}<span class="ck-time">${sc.nap.start}</span><button type="button" class="round sm" data-act="time" data-k="nap.start" data-d="15" aria-label="${label} plus tard">+</button></div>`;
       else ctl = `${pm('ck-time', `data-id="${esc(sl.id)}"`, label)}<span class="ck-time">${sl.time}</span><button type="button" class="round sm" data-act="ck-time" data-id="${esc(sl.id)}" data-d="15" aria-label="${label} plus tard">+</button></div>`;
-      return `<div class="ck-row"><span class="ck-ico" style="background:${info.bg};${info.dark ? 'color:#F5C451' : ''}">${icon(ICONS[info.icon] || ICONS.clock, 26)}</span>
+      return `<div class="ck-row" data-row="${esc(sl.id)}">${grip}<span class="ck-ico" style="background:${info.bg};${info.dark ? 'color:#F5C451' : ''}">${icon(ICONS[info.icon] || ICONS.clock, 26)}</span>
         <div class="ck-label"><strong>${label}</strong>${sl.fixed === 'nap' ? `<span class="muted small">Durée ${Math.floor(sc.nap.dur / 60) ? Math.floor(sc.nap.dur / 60) + ' h ' : ''}${sc.nap.dur % 60 ? String(sc.nap.dur % 60).padStart(2, '0') : ''} <button type="button" class="link-btn small" data-act="nap-dur" data-d="-15">−</button><button type="button" class="link-btn small" data-act="nap-dur" data-d="15">+</button></span>` : ''}</div>${ctl}</div>`;
     }).join('');
     return `<div class="screen onb">
       ${head(3, 'onb-day')}
       <div class="onb-body top">
         <h1>Les heures, à peu près</h1>
-        <p class="lead muted">Elles sont déjà proposées. Ajustez avec − et + si besoin, sinon continuez.</p>
-        <div class="ck-list onb-times">${rows}</div>
+        <p class="lead muted">Elles sont déjà proposées. Glissez un moment par ${icon(ICONS.grip, 18)} pour changer l’ordre, ajustez avec − et + si besoin, sinon continuez.</p>
+        <div class="ck-list onb-times" data-reorder="day">${rows}</div>
       </div>
       <div class="onb-foot end"><button type="button" class="btn primary" data-go="onb-moon">Continuer</button></div>
     </div>`;
@@ -223,7 +256,7 @@ ctx.screens['onb-ready'] = {
       <div class="col">
         <h1>Tout est prêt pour ${esc(c.name)} !</h1>
         <p class="lead">Sa journée :</p>
-        <div class="chips static">${daySlots(ctx.s).filter((x) => x.fixed !== 'napend').map((x) => `<span class="chip">${icon(ICONS[x.info.icon] || ICONS.clock, 18)} ${x.time} ${esc((DAY_IDEAS.find((d) => d[0] === x.id) || [])[2] || x.info.label)}</span>`).join('')}</div>
+        <div class="chips static">${daySlots(ctx.s).filter((x) => x.fixed !== 'napend').map((x) => `<span class="chip">${icon(ICONS[x.info.icon] || ICONS.clock, 18)} ${x.time} ${esc(x.label || (x.id === 'ecole' ? '' : (DAY_IDEAS.find((d) => d[0] === x.id) || [])[2]) || x.info.label)}</span>`).join('')}</div>
         <p class="muted">Tout se change dans l’espace parent. Un petit guide vous y attend pour la suite : une histoire avec votre voix, puis la première nuit.</p>
         <details class="card tips"><summary>Avant la première nuit (conseillé)</summary>
           <span>Branchez la tablette, baissez la luminosité au minimum, et activez « Accès guidé » (iPad) ou « Épinglage d'écran » (Android) pour que ${esc(c.name)} reste dans Lunoo.</span></details>
