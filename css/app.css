@@ -910,3 +910,41 @@ select.input { padding: 0 12px; }
   .transport .timer, .transport .rec-status { flex: 1 1 40%; }
   .transport .rec-status { text-align: right; }
 }
+
+/* ---------- Tablettes de 768 à 1180 px (iPad mini, iPad, iPad Air) ---------- */
+/* Paysage : barre latérale plus étroite, et les volets latéraux passent sous le contenu. */
+@media (min-width: 901px) and (max-width: 1180px) {
+  .pnav { width: 210px; padding: 20px 10px; }
+  .pnav-brand { font-size: 19px; padding-bottom: 14px; }
+  .pnav-item { padding: 0 12px; gap: 10px; }
+  .pnav-exit { font-size: 14px; }
+  .pmain { padding: 24px 28px 32px; }
+  .split { flex-direction: column; align-items: stretch; }
+  .aside { width: 100%; position: static; }
+  .side-preview { width: 100%; position: static; flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+  .side-preview > * { flex: 1 1 260px; }
+  .side-preview > .label { flex-basis: 100%; }
+  .side-preview .preview.sm { flex: none; }
+}
+/* Écrans peu hauts (iPad en paysage avec les barres de Safari) */
+@media (orientation: landscape) and (max-height: 800px) {
+  .onb { padding-top: 20px; padding-bottom: 20px; }
+  .day-grid { grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .day-tile { min-height: 86px; }
+  .onb-body { gap: 18px; }
+  .ch-animal .animal { width: min(300px, 34vw, 46vh); }
+  .moment-animal .animal { width: min(280px, 38vh); }
+}
+/* Portrait : tout s'empile et se centre, l'animal prend la place libre. */
+@media (orientation: portrait) {
+  .ch-animal .animal { width: min(380px, 38vh, 72vw); }
+  .ch-sayrow { flex-direction: column; gap: 14px; }
+  .ch-say { font-size: max(40px, min(6vw, 56px)); }
+  .ch-side { width: min(560px, 92vw); }
+  .ready { flex-direction: column; text-align: center; gap: 24px; }
+  .ready .col { align-items: center; width: min(620px, 100%); }
+  .ready .col .chips { justify-content: center; }
+  .home-animal .animal { width: min(340px, 34vh, 60vw); }
+  .onb-body.row { flex-direction: column; text-align: center; gap: 28px; }
+  .anim-preview .ch-sayrow, .preview-host .ch-sayrow { flex-direction: column; }
+}
